@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>{{PAGE_TITLE}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════
+   DESIGN TOKENS
+══════════════════════════════════════════ */
+:root {
+  --bg:        #F4F2ED;
+  --sur:       #FFFFFF;
+  --sur2:      #F9F8F5;
+  --bdr:       #E4DFD6;
+  --bdr2:      #CEC8C0;
+  --ink:       #1A1714;
+  --ink2:      #3C3830;
+  --ink3:      #78726A;
+  --ink4:      #ABA49C;
+
+  --gold:      #C8872A;
+  --gold-lt:   #FEF5E6;
+  --gold-ring: #F0C870;
+
+  --blue:      #2563EB;
+  --blue-lt:   #EFF6FF;
+  --blue-dim:  #DBEAFE;
+
+  --green:     #16A34A;
+  --green-lt:  #F0FDF4;
+  --green-dim: #BBF7D0;
+
+  --red:       #DC2626;
+  --red-lt:    #FEF2F2;
+  --red-dim:   #FECACA;
+
+  --amber:     #D97706;
+  --amber-lt:  #FFFBEB;
+  --amber-dim: #FDE68A;
+
+  --sh0: 0 1px 3px rgba(26,23,20,.07);
+  --sh1: 0 2px 8px rgba(26,23,20,.09), 0 1px 2px rgba(26,23,20,.05);
+
+  --ff-serif: "Playfair Display", Georgia, serif;
+  --ff-sans:  "Plus Jakarta Sans", -apple-system, sans-serif;
+  --ease:     cubic-bezier(.4,0,.2,1);
+
+  --bar-h:    56px;
+  --bot-h:    62px;
+}
+
+/* ══════════════════════════════════════════
+   RESET
+══════════════════════════════════════════ */
+*, *::before, *::after {
+  box-sizing: border-box; margin: 0; padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+html, body { height: 100%; }
+body {
+  font-family: var(--ff-sans);
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+button { cursor: pointer; font-family: inherit; border: none; background: none; }
+
+/* ══════════════════════════════════════════
+   KEYFRAMES
+══════════════════════════════════════════ */
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(12px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes popIn {
+  0%   { opacity:0; transform:scale(.8); }
+  65%  { transform:scale(1.07); }
+  100% { opacity:1; transform:scale(1); }
+}
+@keyframes shimmer {
+  0%   { background-position:-200% 0; }
+  60%  { background-position:200% 0; }
+  100% { background-position:200% 0; }
+}
+@keyframes pulse {
+  0%,100% { opacity:1; }
+  50%      { opacity:.3; }
+}
+@keyframes optSnap {
+  0%   { transform:scale(1); }
+  40%  { transform:scale(.975); }
+  75%  { transform:scale(1.01); }
+  100% { transform:scale(1); }
+}
+
+/* ══════════════════════════════════════════
+   SCREENS
+══════════════════════════════════════════ */
+.screen { display:none; }
+.screen.active {
+  display:flex;
+  flex-direction:column;
+  min-height:100dvh;
+  min-height:-webkit-fill-available;
+}
+
+/* ══════════════════════════════════════════
+   RIPPLE TRANSITION
+══════════════════════════════════════════ */
+#ripple {
+  position:fixed; inset:0;
+  background:var(--ink);
+  z-index:9000;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .32s var(--ease);
+}
+#ripple.in { opacity:1; pointer-events:all; }
+
+/* ══════════════════════════════════════════
+   SPLASH
+══════════════════════════════════════════ */
+#splash {
+  align-items:center;
+  justify-content:center;
+  padding:32px 18px 48px;
+  overflow-y:auto;
+  background:var(--bg);
+}
+
+.s-brand {
+  display:flex; align-items:center; gap:10px;
+  margin-bottom:26px;
+  animation: fadeUp .4s var(--ease) both;
+}
+.s-brand-icon {
+  width:38px; height:38px;
+  background:var(--ink);
+  border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px;
+}
+.s-brand-name {
+  font-family:var(--ff-serif);
+  font-size:20px; color:var(--ink);
+}
+.s-brand-name b { color:var(--gold); }
+
+.s-card {
+  width:100%; max-width:440px;
+  background:var(--sur);
+  border:1px solid var(--bdr);
+  border-radius:20px;
+  box-shadow:var(--sh1);
+  overflow:hidden;
+  animation: fadeUp .45s var(--ease) .06s both;
+}
+
+.s-hero {
+  padding:24px 24px 20px;
+  background:linear-gradient(145deg,var(--gold-lt) 0%,var(--sur) 55%);
+  border-bottom:1px solid var(--bdr);
+}
+.s-badge {
+  display:inline-flex; align-items:center; gap:5px;
+  background:var(--gold-lt); border:1px solid var(--gold-ring);
+  color:var(--gold); font-size:10px; font-weight:700;
+  letter-spacing:.07em; text-transform:uppercase;
+  padding:3px 9px; border-radius:20px; margin-bottom:10px;
+}
+.s-title {
+  font-family:var(--ff-serif);
+  font-size:clamp(18px,5vw,24px);
+  font-weight:700; line-height:1.25;
+  color:var(--ink); margin-bottom:4px;
+}
+.s-sub { font-size:12px; color:var(--ink3); }
+
+.s-stats {
+  display:grid; grid-template-columns:repeat(3,1fr);
+  border-bottom:1px solid var(--bdr);
+}
+.s-stat {
+  padding:16px 8px; text-align:center;
+  border-right:1px solid var(--bdr);
+}
+.s-stat:last-child { border-right:none; }
+.s-stat-v {
+  font-family:var(--ff-serif);
+  font-size:24px; font-weight:700;
+  color:var(--gold); line-height:1; margin-bottom:3px;
+}
+.s-stat-l { font-size:10px; color:var(--ink3); font-weight:500; letter-spacing:.02em; }
+
+.s-rules {
+  padding:14px 20px; display:flex; flex-direction:column; gap:9px;
+  border-bottom:1px solid var(--bdr);
+}
+.s-rule { display:flex; align-items:center; gap:10px; font-size:12.5px; color:var(--ink2); }
+.s-rule-ic {
+  width:28px; height:28px; border-radius:7px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; flex-shrink:0;
+}
+.s-rule-ic.g { background:var(--gold-lt); }
+.s-rule-ic.v { background:var(--green-lt); }
+.s-rule-ic.r { background:var(--red-lt); }
+.s-rule-ic.b { background:var(--blue-lt); }
+.s-rule b { font-weight:600; color:var(--ink); }
+
+.s-foot { padding:16px 20px 22px; }
+.s-note {
+  font-size:11px; color:var(--ink4);
+  text-align:center; margin-bottom:12px; line-height:1.55;
+}
+.btn-begin {
+  width:100%; padding:15px;
+  background:var(--ink); color:#fff;
+  border-radius:12px; font-size:15px; font-weight:700;
+  position:relative; overflow:hidden;
+  transition:transform .16s var(--ease), box-shadow .16s;
+}
+.btn-begin::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.13) 50%,transparent 65%);
+  background-size:250% 100%;
+  animation:shimmer 3s ease-in-out infinite;
+}
+.btn-begin:hover  { transform:translateY(-2px); box-shadow:0 8px 24px rgba(26,23,20,.24); }
+.btn-begin:active { transform:scale(.98); box-shadow:none; }
+
+/* ══════════════════════════════════════════
+   TOP BAR
+══════════════════════════════════════════ */
+#topbar {
+  position:fixed; top:0; left:0; right:0;
+  height:var(--bar-h);
+  background:var(--sur);
+  border-bottom:1px solid var(--bdr);
+  display:none; align-items:center;
+  padding:0 14px; gap:8px;
+  z-index:400;
+  box-shadow:var(--sh0);
+}
+.tb-brand { font-family:var(--ff-serif); font-size:15px; font-weight:700; color:var(--ink); flex-shrink:0; }
+.tb-brand span { color:var(--gold); }
+.tb-sep  { width:1px; height:15px; background:var(--bdr); flex-shrink:0; }
+.tb-name { font-size:11.5px; color:var(--ink3); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tb-r    { margin-left:auto; display:flex; align-items:center; gap:9px; flex-shrink:0; }
+.tb-timer { display:flex; align-items:center; gap:4px; }
+.tb-t-icon { font-size:13px; }
+.tb-t-val  {
+  font-size:14px; font-weight:700;
+  font-variant-numeric:tabular-nums;
+  color:var(--ink); min-width:42px; text-align:right;
+}
+.tb-t-val.warn   { color:var(--amber); }
+.tb-t-val.danger { color:var(--red); animation:pulse .7s ease-in-out infinite; }
+.tb-submit {
+  padding:6px 13px;
+  background:var(--gold); color:#fff;
+  border-radius:7px; font-size:12px; font-weight:700;
+  transition:background .13s, transform .1s;
+}
+.tb-submit:hover  { background:#b87824; }
+.tb-submit:active { transform:scale(.95); }
+
+/* ══════════════════════════════════════════
+   PROGRESS BAR  — sits right under topbar
+══════════════════════════════════════════ */
+#pbar {
+  position:fixed; top:var(--bar-h); left:0; right:0;
+  height:3px; background:var(--bdr);
+  z-index:399; display:none;
+}
+#pbar-fill {
+  height:100%;
+  background:linear-gradient(90deg,var(--gold),#e8a830);
+  border-radius:0 2px 2px 0;
+  width:0%; transition:width .4s var(--ease);
+  box-shadow:0 0 6px rgba(200,136,42,.45);
+}
+
+/* ══════════════════════════════════════════
+   QUIZ SCREEN
+══════════════════════════════════════════ */
+#quiz {
+  flex:1;
+  flex-direction:column;
+  background:var(--bg);
+  padding-top:calc(var(--bar-h) + 3px);
+  padding-bottom:var(--bot-h);
+}
+#quiz.active {
+  display:flex;
+}
+
+/* Column wrapper — on mobile takes full width */
+.q-col {
+  display:flex;
+  flex-direction:column;
+  flex:1;
+  min-width:0;
+  min-height:0;
+}
+
+/* Question meta strip */
+.q-strip {
+  display:flex; align-items:center; gap:7px;
+  padding:8px 14px;
+  background:var(--sur);
+  border-bottom:1px solid var(--bdr);
+  flex-shrink:0;
+}
+.q-num {
+  background:var(--ink); color:#fff;
+  font-size:11px; font-weight:700;
+  padding:3px 10px; border-radius:20px; flex-shrink:0;
+}
+.q-cat {
+  font-size:10.5px; font-weight:600;
+  color:var(--blue); background:var(--blue-lt);
+  border:1px solid var(--blue-dim);
+  padding:2px 8px; border-radius:20px; flex-shrink:0;
+  max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.q-marks { margin-left:auto; display:flex; gap:4px; flex-shrink:0; }
+.mchip { font-size:10px; font-weight:700; padding:2px 7px; border-radius:5px; }
+.mchip.pos { background:var(--green-lt); color:var(--green); }
+.mchip.neg { background:var(--red-lt);   color:var(--red); }
+
+/* Scrollable content area — fills remaining height on mobile */
+.q-body {
+  flex:1;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:12px 12px 20px;
+  scrollbar-width:none;
+  /* ensure it fills height so content isn't cut */
+  min-height:0;
+}
+.q-body::-webkit-scrollbar { display:none; }
+
+/* ── Passage ── */
+.passage-card {
+  background:var(--sur);
+  border:1px solid var(--bdr);
+  border-radius:13px;
+  margin-bottom:11px;
+  overflow:hidden;
+  box-shadow:var(--sh0);
+}
+.passage-head {
+  padding:10px 13px;
+  display:flex; align-items:center; gap:8px;
+  background:linear-gradient(135deg,var(--gold-lt) 0%,var(--sur) 70%);
+  border-bottom:1px solid var(--bdr);
+}
+.passage-head-ic {
+  width:26px; height:26px;
+  background:var(--gold-lt); border:1px solid var(--gold-ring);
+  border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; flex-shrink:0;
+}
+.passage-head-lbl { font-size:12px; font-weight:700; color:var(--ink); }
+.passage-head-tag {
+  margin-left:auto;
+  font-size:9px; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
+  color:var(--gold); background:var(--gold-lt); border:1px solid var(--gold-ring);
+  padding:2px 7px; border-radius:20px; flex-shrink:0;
+}
+.passage-scroll {
+  max-height:240px;
+  overflow-y:auto;
+  scrollbar-width:thin;
+  scrollbar-color:var(--bdr2) transparent;
+}
+.passage-scroll::-webkit-scrollbar { width:3px; }
+.passage-scroll::-webkit-scrollbar-thumb { background:var(--bdr2); border-radius:3px; }
+.passage-txt {
+  padding:12px 14px 16px;
+  font-size:13px; line-height:1.9; color:var(--ink2);
+}
+
+/* ── Question card ── */
+.q-card {
+  background:var(--sur);
+  border:1px solid var(--bdr);
+  border-radius:13px;
+  overflow:hidden;
+  box-shadow:var(--sh0);
+  margin-bottom:10px;
+}
+.q-text {
+  padding:16px 15px 13px;
+  font-size:14.5px; line-height:1.78;
+  color:var(--ink); font-weight:400;
+  border-bottom:1px solid var(--bdr);
+  white-space:pre-wrap;
+}
+
+/* ── Options ── */
+.opts { padding:9px 10px 10px; display:flex; flex-direction:column; gap:6px; }
+.opt {
+  width:100%; display:flex; align-items:flex-start; gap:9px;
+  padding:11px 12px;
+  border-radius:9px; border:1.5px solid var(--bdr);
+  background:var(--sur2);
+  font-size:13.5px; color:var(--ink2); line-height:1.5;
+  text-align:left;
+  transition:border-color .14s var(--ease), background .14s var(--ease), box-shadow .14s;
+}
+.opt:hover:not(:disabled):not(.sel):not(.ok):not(.bad) {
+  border-color:var(--gold-ring);
+  background:var(--gold-lt);
+  box-shadow:0 1px 8px rgba(200,136,42,.1);
+}
+.opt:active:not(:disabled) { transform:scale(.984); }
+.opt.snap { animation:optSnap .24s var(--ease); }
+.opt.sel  { border-color:var(--blue);  background:var(--blue-lt);  box-shadow:0 1px 8px rgba(37,99,235,.1); }
+.opt.ok   { border-color:var(--green); background:var(--green-lt); }
+.opt.bad  { border-color:var(--red);   background:var(--red-lt); }
+.opt:disabled { cursor:default; }
+
+.opt-k {
+  width:24px; height:24px; border-radius:6px;
+  background:var(--sur); border:1.5px solid var(--bdr2);
+  display:flex; align-items:center; justify-content:center;
+  font-size:10.5px; font-weight:700; color:var(--ink3);
+  flex-shrink:0; margin-top:1px;
+  transition:background .13s, border-color .13s, color .13s;
+}
+.opt.sel .opt-k { background:var(--blue);  border-color:var(--blue);  color:#fff; }
+.opt.ok  .opt-k { background:var(--green); border-color:var(--green); color:#fff; }
+.opt.bad .opt-k { background:var(--red);   border-color:var(--red);   color:#fff; }
+.opt-t { flex:1; min-width:0; }
+
+/* ── Explanation ── */
+.exp-box {
+  margin:0 10px 10px;
+  border-left:3px solid var(--gold);
+  background:var(--gold-lt);
+  border-radius:0 8px 8px 0;
+  max-height:0; opacity:0; overflow:hidden;
+  transition:max-height .35s var(--ease), opacity .25s;
+}
+.exp-box.show { max-height:260px; opacity:1; overflow-y:auto; }
+.exp-inner { padding:10px 12px; }
+.exp-lbl {
+  font-size:9px; font-weight:800; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--gold); margin-bottom:4px;
+}
+.exp-txt { font-size:12.5px; line-height:1.7; color:var(--ink2); }
+
+/* ── Swipe hint ── */
+.swipe-hint {
+  text-align:center; padding:6px 0 2px;
+  font-size:10.5px; color:var(--ink4);
+  opacity:0; transition:opacity .4s;
+}
+.swipe-hint.show { opacity:1; }
+
+/* ── Desktop inline nav ── */
+.desktop-nav {
+  display:none; align-items:center; gap:8px;
+  padding:4px 0 28px;
+}
+
+/* ══════════════════════════════════════════
+   NAV BUTTONS  (shared mobile + desktop)
+══════════════════════════════════════════ */
+.btn-prev, .btn-next {
+  display:flex; align-items:center; gap:5px;
+  padding:9px 16px; border-radius:9px;
+  font-size:13px; font-weight:600;
+  transition:background .13s, border-color .13s, transform .1s var(--ease);
+  flex-shrink:0;
+}
+.btn-prev {
+  border:1.5px solid var(--bdr); background:var(--sur2); color:var(--ink2);
+}
+.btn-prev:hover { background:var(--sur); border-color:var(--bdr2); }
+.btn-prev:active { transform:scale(.94); }
+.btn-prev:disabled { opacity:.35; cursor:default; }
+.btn-next {
+  border:1.5px solid var(--ink); background:var(--ink); color:#fff;
+}
+.btn-next:hover { background:#2c2620; border-color:#2c2620; }
+.btn-next:active { transform:scale(.94); }
+.btn-next:disabled { opacity:.35; cursor:default; }
+.btn-next.last { border-color:var(--gold); background:var(--gold); }
+.btn-next.last:hover { background:#b87824; border-color:#b87824; }
+
+/* ══════════════════════════════════════════
+   MARK-FOR-REVIEW BUTTON  — clean design
+══════════════════════════════════════════ */
+.btn-mark {
+  display:flex; align-items:center; gap:5px;
+  padding:8px 12px; border-radius:9px;
+  border:1.5px solid var(--bdr2);
+  background:var(--sur2);
+  font-size:11.5px; font-weight:600; color:var(--ink3);
+  flex-shrink:0;
+  transition:all .14s var(--ease);
+  white-space:nowrap;
+}
+.btn-mark svg { flex-shrink:0; }
+.btn-mark:hover { border-color:var(--amber-dim); background:var(--amber-lt); color:var(--amber); }
+.btn-mark.on {
+  border-color:var(--amber); background:var(--amber-lt); color:var(--amber);
+  box-shadow:0 0 0 3px rgba(217,119,6,.14);
+}
+.btn-mark.on .mark-dot { background:var(--amber); }
+.btn-mark:active { transform:scale(.93); }
+
+.mark-dot {
+  width:6px; height:6px; border-radius:50%;
+  background:var(--bdr2); flex-shrink:0;
+  transition:background .13s;
+}
+
+/* ══════════════════════════════════════════
+   BOTTOM BAR  (mobile)
+══════════════════════════════════════════ */
+#bottombar {
+  position:fixed; bottom:0; left:0; right:0;
+  height:var(--bot-h);
+  background:var(--sur); border-top:1px solid var(--bdr);
+  display:none; align-items:center;
+  justify-content:space-between;
+  padding:0 10px; gap:6px;
+  z-index:400;
+  box-shadow:0 -2px 10px rgba(26,23,20,.06);
+}
+.bb-mid { display:flex; align-items:center; gap:6px; flex:1; justify-content:center; }
+.btn-palette {
+  display:flex; align-items:center; gap:5px;
+  padding:8px 12px; border-radius:9px;
+  border:1.5px solid var(--bdr); background:var(--sur2);
+  font-size:12px; font-weight:600; color:var(--ink2);
+  transition:all .13s var(--ease);
+}
+.btn-palette:hover  { background:var(--sur); border-color:var(--bdr2); }
+.btn-palette:active { transform:scale(.93); }
+
+/* ══════════════════════════════════════════
+   PALETTE BOTTOM SHEET
+══════════════════════════════════════════ */
+.p-overlay {
+  position:fixed; inset:0;
+  background:rgba(26,23,20,.44);
+  backdrop-filter:blur(3px);
+  z-index:600; opacity:0; pointer-events:none;
+  transition:opacity .26s var(--ease);
+}
+.p-overlay.show { opacity:1; pointer-events:all; }
+
+.p-sheet {
+  position:fixed; bottom:0; left:0; right:0;
+  background:var(--sur);
+  border-radius:18px 18px 0 0;
+  z-index:601;
+  transform:translateY(100%);
+  transition:transform .3s var(--ease);
+  max-height:72vh; display:flex; flex-direction:column;
+  box-shadow:0 -8px 40px rgba(26,23,20,.16);
+}
+.p-sheet.show { transform:translateY(0); }
+
+.p-pill {
+  width:36px; height:4px; background:var(--bdr2); border-radius:2px;
+  margin:11px auto 0; flex-shrink:0; opacity:.6;
+}
+.p-head {
+  padding:10px 16px 9px;
+  border-bottom:1px solid var(--bdr);
+  display:flex; align-items:center; justify-content:space-between;
+  flex-shrink:0;
+}
+.p-title { font-size:14px; font-weight:700; color:var(--ink); }
+.p-close {
+  width:28px; height:28px; border-radius:50%;
+  background:var(--bg); display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:700; color:var(--ink3);
+  transition:background .12s, transform .1s;
+}
+.p-close:hover  { background:var(--bdr); }
+.p-close:active { transform:scale(.86); }
+
+/* Legend */
+.p-legend {
+  padding:8px 16px; display:flex; gap:10px; flex-wrap:wrap;
+  border-bottom:1px solid var(--bdr); flex-shrink:0;
+}
+.leg { display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--ink3); }
+.ldot { width:11px; height:11px; border-radius:50%; flex-shrink:0; }
+.ldot.un      { background:var(--bg);    border:1.5px solid var(--bdr2); }
+.ldot.visited { background:var(--red);   }
+.ldot.ans     { background:var(--green); }
+.ldot.rev     { background:var(--amber); }
+.ldot.cur     { background:var(--ink);   }
+
+/* Summary */
+.p-summary {
+  padding:7px 16px; display:flex; gap:12px;
+  border-bottom:1px solid var(--bdr); flex-shrink:0;
+}
+.p-sum-item { display:flex; align-items:baseline; gap:4px; font-size:11px; color:var(--ink3); }
+.p-sum-n { font-size:15px; font-weight:700; color:var(--ink); }
+.p-sum-n.green { color:var(--green); }
+.p-sum-n.amber { color:var(--amber); }
+.p-sum-n.red   { color:var(--red); }
+
+/* Grid */
+.p-scroll { overflow-y:auto; padding:11px 16px 22px; flex:1; }
+.pdot-grid {
+  display:grid;
+  grid-template-columns:repeat(6,1fr);
+  gap:7px;
+}
+@media(min-width:370px) { .pdot-grid { grid-template-columns:repeat(7,1fr); } }
+@media(min-width:440px) { .pdot-grid { grid-template-columns:repeat(8,1fr); } }
+
+.pdot {
+  aspect-ratio:1; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:700;
+  border:1.5px solid var(--bdr2); background:var(--bg); color:var(--ink3);
+  cursor:pointer;
+  transition:transform .12s var(--ease), box-shadow .12s;
+}
+.pdot:hover   { transform:scale(1.12); }
+.pdot:active  { transform:scale(.86); }
+/* 5 states — priority: cur > ans > rev > visited > default */
+.pdot.cur     { background:var(--ink);   border-color:var(--ink);   color:#fff; box-shadow:0 2px 8px rgba(26,23,20,.25); }
+.pdot.ans     { background:var(--green); border-color:var(--green); color:#fff; box-shadow:0 2px 6px rgba(22,163,74,.22); }
+.pdot.rev     { background:var(--amber); border-color:var(--amber); color:#fff; box-shadow:0 2px 6px rgba(217,119,6,.2); }
+.pdot.visited { background:var(--red);   border-color:var(--red);   color:#fff; box-shadow:0 2px 6px rgba(220,38,38,.2); }
+
+/* ══════════════════════════════════════════
+   SCORE SCREEN
+══════════════════════════════════════════ */
+#score { background:var(--bg); overflow-y:auto; -webkit-overflow-scrolling:touch; }
+.sc-wrap { max-width:660px; margin:0 auto; }
+
+.sc-bar {
+  background:var(--sur); border-bottom:1px solid var(--bdr);
+  padding:13px 16px; display:flex; align-items:center;
+  position:sticky; top:0; z-index:10;
+  box-shadow:var(--sh0);
+}
+.sc-bar-brand { font-family:var(--ff-serif); font-size:15px; font-weight:700; color:var(--ink); }
+.sc-bar-brand span { color:var(--gold); }
+.sc-bar-lbl { font-size:11px; color:var(--ink3); margin-left:auto; }
+
+.sc-hero {
+  padding:34px 18px 26px; text-align:center;
+  background:linear-gradient(170deg,var(--gold-lt) 0%,var(--bg) 60%);
+  border-bottom:1px solid var(--bdr);
+  animation:fadeUp .45s var(--ease) both;
+}
+.sc-emoji { font-size:52px; display:block; margin-bottom:10px; animation:popIn .5s var(--ease) .1s both; }
+.sc-title { font-family:var(--ff-serif); font-size:25px; font-weight:700; color:var(--ink); margin-bottom:3px; }
+.sc-sub   { font-size:12.5px; color:var(--ink3); margin-bottom:14px; }
+.sc-big   { display:flex; align-items:baseline; justify-content:center; gap:3px; }
+.sc-big-n { font-family:var(--ff-serif); font-size:50px; font-weight:700; color:var(--gold); line-height:1; }
+.sc-big-d { font-size:19px; color:var(--ink3); font-weight:500; }
+
+.sc-tiles {
+  display:grid; grid-template-columns:repeat(2,1fr);
+  gap:8px; padding:12px;
+}
+@media(min-width:390px) { .sc-tiles { grid-template-columns:repeat(3,1fr); } }
+.sc-tile {
+  background:var(--sur); border:1px solid var(--bdr);
+  border-radius:11px; padding:13px 10px; text-align:center;
+  box-shadow:var(--sh0);
+  transition:transform .14s var(--ease), box-shadow .14s;
+}
+.sc-tile:hover { transform:translateY(-2px); box-shadow:var(--sh1); }
+.sc-val  { font-family:var(--ff-serif); font-size:22px; font-weight:700; color:var(--ink); margin-bottom:3px; line-height:1; }
+.sc-val.g { color:var(--green); }
+.sc-val.r { color:var(--red); }
+.sc-val.a { color:var(--amber); }
+.sc-lbl  { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--ink3); }
+
+.rv-head { padding:13px 12px 8px; display:flex; align-items:center; justify-content:space-between; }
+.rv-title { font-size:13px; font-weight:700; color:var(--ink); }
+.rv-sub   { font-size:11px; color:var(--ink3); }
+
+.rv-card {
+  background:var(--sur); border:1px solid var(--bdr);
+  border-radius:11px; margin:0 10px 8px;
+  overflow:hidden; box-shadow:var(--sh0);
+  transition:transform .13s var(--ease), box-shadow .13s;
+}
+.rv-card:hover { transform:translateY(-1px); box-shadow:var(--sh1); }
+.rv-card-head {
+  padding:10px 11px; display:flex; align-items:flex-start; gap:8px;
+  border-bottom:1px solid var(--bdr);
+}
+.rv-icon {
+  width:24px; height:24px; border-radius:5px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:11.5px; font-weight:700; flex-shrink:0;
+}
+.rv-icon.ok   { background:var(--green-lt); color:var(--green); }
+.rv-icon.bad  { background:var(--red-lt);   color:var(--red); }
+.rv-icon.skip { background:var(--bg); border:1px solid var(--bdr); color:var(--ink3); }
+.rv-qn   { font-size:10px; font-weight:700; color:var(--ink3); margin-bottom:2px; }
+.rv-qt   { font-size:12px; color:var(--ink); line-height:1.5; }
+.rv-chips { padding:8px 11px; display:flex; gap:5px; flex-wrap:wrap; align-items:center; }
+.rchip   { font-size:11px; font-weight:500; padding:3px 8px; border-radius:5px; }
+.rchip.ok   { background:var(--green-lt); color:var(--green); border:1px solid var(--green-dim); }
+.rchip.bad  { background:var(--red-lt);   color:var(--red);   border:1px solid var(--red-dim); }
+.rchip.skip { background:var(--bg); color:var(--ink3); border:1px solid var(--bdr); }
+.rchip.dp   { font-weight:700; background:var(--green-lt); color:var(--green); }
+.rchip.dn   { font-weight:700; background:var(--red-lt);   color:var(--red); }
+.rv-exp  { padding:0 11px 9px; }
+.rv-exp-txt {
+  font-size:11.5px; line-height:1.65; color:var(--ink2);
+  background:var(--gold-lt); border-left:3px solid var(--gold-ring);
+  padding:7px 10px; border-radius:0 5px 5px 0;
+}
+
+.sc-foot { padding:12px 12px 36px; }
+.btn-restart {
+  width:100%; padding:14px;
+  background:var(--ink); color:#fff;
+  border-radius:11px; font-size:14px; font-weight:700;
+  position:relative; overflow:hidden;
+  transition:transform .15s var(--ease), box-shadow .15s;
+}
+.btn-restart::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.1) 50%,transparent 65%);
+  background-size:250% 100%;
+  animation:shimmer 3.5s ease-in-out infinite;
+}
+.btn-restart:hover  { transform:translateY(-2px); box-shadow:0 6px 20px rgba(26,23,20,.2); }
+.btn-restart:active { transform:scale(.98); box-shadow:none; }
+
+/* ══════════════════════════════════════════
+   DESKTOP  ≥ 768px
+══════════════════════════════════════════ */
+@media(min-width:768px) {
+  :root { --bar-h:62px; --bot-h:0px; }
+
+  #quiz {
+    flex-direction:row;
+    align-items:flex-start;
+    max-width:1240px; margin:0 auto;
+    padding:var(--bar-h) 22px 0;
+    padding-bottom:0;
+    gap:20px;
+    /* on desktop the whole page scrolls, not the inner q-body */
+    min-height:calc(100dvh - var(--bar-h));
+  }
+
+  .q-col {
+    flex:1; min-width:0;
+    /* don't constrain height — let page scroll */
+    overflow:visible;
+  }
+
+  /* on desktop q-body doesn't scroll internally — page does */
+  .q-body {
+    flex:none;
+    overflow-y:visible;
+    padding:0 0 40px;
+  }
+
+  .q-strip { padding:10px 15px; }
+
+  #bottombar { display:none !important; }
+
+  .desktop-nav {
+    display:flex;
+    padding:4px 0 28px;
+  }
+  .desktop-nav .btn-prev,
+  .desktop-nav .btn-next { padding:10px 20px; font-size:13.5px; border-radius:9px; }
+  .desktop-nav .btn-mark  { padding:9px 14px; }
+
+  /* Sidebar */
+  .sidebar {
+    width:212px; flex-shrink:0;
+    position:sticky;
+    top:calc(var(--bar-h) + 16px);
+    max-height:calc(100dvh - var(--bar-h) - 32px);
+    overflow-y:auto; scrollbar-width:none;
+    display:flex; flex-direction:column; gap:11px;
+  }
+  .sidebar::-webkit-scrollbar { display:none; }
+  .sb-card {
+    background:var(--sur); border:1px solid var(--bdr);
+    border-radius:12px; overflow:hidden; box-shadow:var(--sh0);
+  }
+  .sb-head {
+    padding:9px 12px;
+    font-size:10px; font-weight:700; letter-spacing:.07em;
+    text-transform:uppercase; color:var(--ink3);
+    border-bottom:1px solid var(--bdr); background:var(--sur2);
+  }
+  .sb-legend { padding:9px 12px; display:flex; flex-direction:column; gap:6px; border-bottom:1px solid var(--bdr); }
+  .sb-pgrid  { padding:10px 11px; display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+  .sb-stats  { padding:9px 12px; display:flex; flex-direction:column; gap:6px; }
+  .sb-row    { display:flex; align-items:center; justify-content:space-between; font-size:11px; color:var(--ink3); }
+  .sb-val    { font-weight:700; color:var(--ink); }
+  .sb-val.g  { color:var(--green); }
+  .sb-val.a  { color:var(--amber); }
+  .sb-val.r  { color:var(--red); }
+
+  .sc-wrap  { max-width:700px; }
+  .sc-tiles { grid-template-columns:repeat(3,1fr); }
+}
+/* ══════════════════════════════════════════
+   CONFIRM MODAL
+══════════════════════════════════════════ */
+#modalOverlay {
+  position:fixed; inset:0;
+  background:rgba(26,23,20,.5);
+  backdrop-filter:blur(4px);
+  z-index:8000;
+  display:none; align-items:center; justify-content:center;
+  padding:20px;
+}
+#modalOverlay.show { display:flex; }
+#modalBox {
+  background:var(--sur);
+  border:1px solid var(--bdr);
+  border-radius:18px;
+  width:100%; max-width:340px;
+  box-shadow:0 16px 48px rgba(26,23,20,.2);
+  overflow:hidden;
+  animation:fadeUp .22s var(--ease) both;
+}
+#modalTitle {
+  padding:20px 20px 4px;
+  font-size:16px; font-weight:700; color:var(--ink);
+}
+#modalBody {
+  padding:6px 20px 18px;
+  font-size:13.5px; line-height:1.6; color:var(--ink3);
+}
+#modalBody b { color:var(--ink); font-weight:700; }
+#modalBtns {
+  display:grid; grid-template-columns:1fr 1fr;
+  border-top:1px solid var(--bdr);
+}
+#modalCancel {
+  padding:14px; font-size:14px; font-weight:600;
+  color:var(--ink3); border-right:1px solid var(--bdr);
+  transition:background .12s;
+}
+#modalCancel:hover { background:var(--sur2); }
+#modalCancel:active { background:var(--bdr); }
+#modalConfirm {
+  padding:14px; font-size:14px; font-weight:700;
+  color:var(--red);
+  transition:background .12s;
+}
+#modalConfirm:hover { background:var(--red-lt); }
+#modalConfirm:active { background:var(--red-dim); }
+</style>
+</head>
+<body>
+
+<!-- Transition overlay -->
+<div id="ripple"></div>
+
+<!-- ══════════════════════════════
+     SPLASH
+══════════════════════════════ -->
+<div id="splash" class="screen active">
+  <div class="s-brand">
+    <div class="s-brand-icon">📋</div>
+    <div class="s-brand-name">Gang<b>Leader</b></div>
+  </div>
+
+  <div class="s-card">
+    <div class="s-hero">
+      <div class="s-badge">📅 {{BADGE_TEXT}}</div>
+      <div class="s-title">{{EXAM_TITLE}}</div>
+      <div class="s-sub">{{EXAM_SUBTITLE}}</div>
+    </div>
+
+    <div class="s-stats">
+      <div class="s-stat"><div class="s-stat-v" id="splashQCount">{{Q_COUNT}}</div><div class="s-stat-l">Questions</div></div>
+      <div class="s-stat"><div class="s-stat-v">{{MINUTES}}</div><div class="s-stat-l">Minutes</div></div>
+      <div class="s-stat"><div class="s-stat-v">{{MAX_MARKS}}</div><div class="s-stat-l">Max Marks</div></div>
+    </div>
+
+    <div class="s-rules">
+      <div class="s-rule"><div class="s-rule-ic g">⏱</div><div>Timer starts when you tap <b>Begin</b></div></div>
+      <div class="s-rule"><div class="s-rule-ic v">✅</div><div><b>+1 mark</b> for every correct answer</div></div>
+      <div class="s-rule"><div class="s-rule-ic r">❌</div><div><b>−0.25 marks</b> for wrong answer</div></div>
+      <div class="s-rule"><div class="s-rule-ic b">👆</div><div>Swipe or tap arrows to navigate</div></div>
+    </div>
+
+    <div class="s-foot">
+      <div class="s-note">Once started, the test cannot be paused.<br>Ensure a stable connection before beginning.</div>
+      <button class="btn-begin" onclick="beginTest()">Begin Mock Test →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     TOP BAR
+══════════════════════════════ -->
+<div id="topbar">
+  <div class="tb-brand">Gang<span>Leader</span></div>
+  <div class="tb-sep"></div>
+  <div class="tb-name">{{TOPBAR_NAME}}</div>
+  <div class="tb-r">
+    <div class="tb-timer">
+      <span class="tb-t-icon">⏱</span>
+      <div class="tb-t-val" id="timerDisp">20:00</div>
+    </div>
+    <button class="tb-submit" onclick="confirmSubmit()">Submit</button>
+  </div>
+</div>
+
+<div id="pbar"><div id="pbar-fill"></div></div>
+
+<!-- ══════════════════════════════
+     QUIZ SCREEN
+══════════════════════════════ -->
+<div id="quiz" class="screen">
+
+  <!-- On mobile: single column. On desktop: wraps in flex row via JS-added class -->
+  <div class="q-col" id="qCol">
+
+    <div class="q-strip" id="qStrip">
+      <div class="q-num"  id="qNumPill">Q 1</div>
+      <div class="q-cat"  id="qCatTag">General</div>
+      <div class="q-marks">
+        <span class="mchip pos">+1</span>
+        <span class="mchip neg">−0.25</span>
+      </div>
+    </div>
+
+    <div class="q-body" id="qBody">
+
+      <!-- Passage -->
+      <div class="passage-card" id="passageCard" style="display:none">
+        <div class="passage-head">
+          <div class="passage-head-ic">📖</div>
+          <div class="passage-head-lbl">Reading Passage</div>
+          <div class="passage-head-tag">Refer Above</div>
+        </div>
+        <div class="passage-scroll">
+          <div class="passage-txt" id="passageText"></div>
+        </div>
+      </div>
+
+      <!-- Question -->
+      <div class="q-card">
+        <div class="q-text" id="questionText">Loading…</div>
+        <div class="opts"   id="optionsList"></div>
+        <div class="exp-box" id="expBox">
+          <div class="exp-inner">
+            <div class="exp-lbl">✦ Explanation</div>
+            <div class="exp-txt" id="expText"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="swipe-hint" id="swipeHint">← Swipe to navigate →</div>
+
+      <!-- Desktop inline nav -->
+      <div class="desktop-nav" id="desktopNav" style="display:none">
+        <button class="btn-prev" id="dBtnPrev" onclick="navigate(-1)">← Prev</button>
+        <button class="btn-mark" id="dBtnMark" onclick="toggleReview()">
+          <div class="mark-dot"></div>
+          <span>Mark for Review</span>
+        </button>
+        <button class="btn-next" id="dBtnNext" onclick="navigate(1)">Next →</button>
+      </div>
+
+    </div>
+  </div><!-- end q-col -->
+
+  <!-- Desktop sidebar (injected into #quiz flex row) -->
+  <div class="sidebar" id="sidebar" style="display:none">
+    <div class="sb-card">
+      <div class="sb-head">Live Stats</div>
+      <div class="sb-stats">
+        <div class="sb-row"><span>Answered</span><span class="sb-val g" id="sbAns">0</span></div>
+        <div class="sb-row"><span>Visited</span><span class="sb-val r" id="sbVis">0</span></div>
+        <div class="sb-row"><span>Skipped</span><span class="sb-val" id="sbSkip">30</span></div>
+        <div class="sb-row"><span>Review</span><span class="sb-val a" id="sbRev">0</span></div>
+      </div>
+    </div>
+    <div class="sb-card">
+      <div class="sb-head">Question Palette</div>
+      <div class="sb-legend">
+        <div class="leg"><div class="ldot cur"></div>Current</div>
+        <div class="leg"><div class="ldot ans"></div>Answered</div>
+        <div class="leg"><div class="ldot rev"></div>Marked for Review</div>
+        <div class="leg"><div class="ldot visited"></div>Visited, Unanswered</div>
+        <div class="leg"><div class="ldot un"></div>Not Visited</div>
+      </div>
+      <div class="sb-pgrid" id="sbPaletteGrid"></div>
+    </div>
+  </div>
+
+</div><!-- end #quiz -->
+
+<!-- ══════════════════════════════
+     BOTTOM BAR  (mobile)
+══════════════════════════════ -->
+<div id="bottombar">
+  <button class="btn-prev" id="mBtnPrev" onclick="navigate(-1)">← Prev</button>
+  <div class="bb-mid">
+    <button class="btn-mark" id="mBtnMark" onclick="toggleReview()">
+      <div class="mark-dot"></div>
+      <span>Review</span>
+    </button>
+    <button class="btn-palette" onclick="openPalette()">
+      <span id="palProg">0/30</span> ☰
+    </button>
+  </div>
+  <button class="btn-next" id="mBtnNext" onclick="navigate(1)">Next →</button>
+</div>
+
+<!-- ══════════════════════════════
+     PALETTE SHEET
+══════════════════════════════ -->
+<div class="p-overlay" id="pOverlay" onclick="closePalette()"></div>
+<div class="p-sheet"   id="pSheet">
+  <div class="p-pill"></div>
+  <div class="p-head">
+    <div class="p-title">Question Palette</div>
+    <button class="p-close" onclick="closePalette()">✕</button>
+  </div>
+  <div class="p-legend">
+    <div class="leg"><div class="ldot cur"></div>Current</div>
+    <div class="leg"><div class="ldot ans"></div>Answered</div>
+    <div class="leg"><div class="ldot rev"></div>Review</div>
+    <div class="leg"><div class="ldot visited"></div>Visited</div>
+    <div class="leg"><div class="ldot un"></div>Skipped</div>
+  </div>
+  <div class="p-summary">
+    <div class="p-sum-item"><span class="p-sum-n green" id="psAns">0</span> Ans</div>
+    <div class="p-sum-item"><span class="p-sum-n amber" id="psRev">0</span> Rev</div>
+    <div class="p-sum-item"><span class="p-sum-n red"   id="psVis">0</span> Visited</div>
+    <div class="p-sum-item"><span class="p-sum-n"       id="psSkip">30</span> Skip</div>
+  </div>
+  <div class="p-scroll">
+    <div class="pdot-grid" id="sheetPaletteGrid"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     SCORE SCREEN
+══════════════════════════════ -->
+<div id="score" class="screen">
+  <div class="sc-wrap">
+    <div class="sc-bar">
+      <div class="sc-bar-brand">Gang<span>Leader</span></div>
+      <div class="sc-bar-lbl">Results</div>
+    </div>
+    <div class="sc-hero">
+      <span class="sc-emoji" id="scoreEmoji">🏆</span>
+      <div class="sc-title"  id="scoreTitle">Test Complete!</div>
+      <div class="sc-sub"    id="scoreSubtitle">Your performance</div>
+      <div class="sc-big">
+        <div class="sc-big-n" id="scoreBigNum">0</div>
+        <div class="sc-big-d" id="scoreBigDen">/30</div>
+      </div>
+    </div>
+    <div class="sc-tiles">
+      <div class="sc-tile"><div class="sc-val g" id="tCor">0</div><div class="sc-lbl">Correct</div></div>
+      <div class="sc-tile"><div class="sc-val r" id="tWrg">0</div><div class="sc-lbl">Wrong</div></div>
+      <div class="sc-tile"><div class="sc-val"   id="tSkp">0</div><div class="sc-lbl">Skipped</div></div>
+      <div class="sc-tile"><div class="sc-val a" id="tAcc">0%</div><div class="sc-lbl">Accuracy</div></div>
+      <div class="sc-tile"><div class="sc-val"   id="tTim">—</div><div class="sc-lbl">Time</div></div>
+      <div class="sc-tile"><div class="sc-val"   id="tPct">—</div><div class="sc-lbl">Percentile</div></div>
+    </div>
+    <div class="rv-head">
+      <div class="rv-title">📋 Question Review</div>
+      <div class="rv-sub" id="rvSub"></div>
+    </div>
+    <div id="reviewList"></div>
+    <div class="sc-foot">
+      <button class="btn-restart" onclick="location.reload()">↩ Restart Test</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════ */
+const QUESTIONS = /*{{QUESTIONS}}*/[];
+const PASSAGE   = /*{{PASSAGE}}*/``;
+const POS = /*{{POS}}*/1, NEG = /*{{NEG}}*/0.25, TOTAL_SEC = /*{{TOTAL_SEC}}*/ 20 * 60;
+const TITLE = /*{{TITLE}}*/"Mock Test";
+
+/* ═══════════════════════════════════════════
+   STATE  — visited[] is new, tracks navigation
+═══════════════════════════════════════════ */
+let cur       = 0;
+let answers   = Array(QUESTIONS.length).fill(null);
+let reviewd   = Array(QUESTIONS.length).fill(false);
+let visited   = Array(QUESTIONS.length).fill(false);  // NEW
+let elapsed   = 0;
+let timerID   = null;
+let submitted = false;
+let isDesktop = false;
+
+/* ═══════════════════════════════════════════
+   SCREEN SWITCH
+═══════════════════════════════════════════ */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+/* ═══════════════════════════════════════════
+   BEGIN TEST  — guaranteed black overlay before screen switch
+═══════════════════════════════════════════ */
+function beginTest() {
+  const rip = document.getElementById('ripple');
+
+  // Step 1: fade to black
+  rip.classList.add('in');
+
+  // Step 2: once fully black (transition done), switch everything
+  rip.addEventListener('transitionend', function onBlack() {
+    rip.removeEventListener('transitionend', onBlack);
+
+    // All DOM work happens here while screen is fully covered
+    showScreen('quiz');
+    document.getElementById('topbar').style.display = 'flex';
+    document.getElementById('pbar').style.display   = 'block';
+
+    isDesktop = window.innerWidth >= 768;
+    setupLayout();
+
+    visited[0] = true;
+    renderQuestion();
+    startTimer();
+    initSwipe();
+
+    // Step 3: one rAF to let browser paint the quiz, then fade back in
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        rip.classList.remove('in');
+      });
+    });
+  }, { once: true });
+}
+
+function setupLayout() {
+  if (isDesktop) {
+    document.getElementById('desktopNav').style.display = 'flex';
+    document.getElementById('sidebar').style.display    = 'flex';
+    document.getElementById('bottombar').style.display  = 'none';
+    buildPalette('sbPaletteGrid');
+  } else {
+    document.getElementById('desktopNav').style.display = 'none';
+    document.getElementById('sidebar').style.display    = 'none';
+    document.getElementById('bottombar').style.display  = 'flex';
+    buildPalette('sheetPaletteGrid');
+    setTimeout(() => {
+      const h = document.getElementById('swipeHint');
+      if (h) { h.classList.add('show'); setTimeout(() => h.classList.remove('show'), 3000); }
+    }, 1500);
+  }
+}
+
+/* ═══════════════════════════════════════════
+   TIMER
+═══════════════════════════════════════════ */
+function startTimer() {
+  let rem = TOTAL_SEC;
+  updateTimer(rem);
+  timerID = setInterval(() => {
+    rem--; elapsed++;
+    updateTimer(rem);
+    if (rem <= 0) { clearInterval(timerID); submitQuiz(); }
+  }, 1000);
+}
+function updateTimer(s) {
+  const el = document.getElementById('timerDisp');
+  el.textContent = pad(Math.floor(s/60)) + ':' + pad(s%60);
+  el.className = 'tb-t-val' + (s<=60?' danger': s<=300?' warn':'');
+}
+function pad(n) { return String(n).padStart(2,'0'); }
+
+/* ═══════════════════════════════════════════
+   RENDER QUESTION
+═══════════════════════════════════════════ */
+function renderQuestion(dir) {
+  const q = QUESTIONS[cur];
+  const n = QUESTIONS.length;
+
+  document.getElementById('qNumPill').textContent = 'Q ' + (cur+1);
+  document.getElementById('qCatTag').textContent  = q.category || 'General';
+
+  // Show passage only for Reading Comprehension questions
+  const passageCard = document.getElementById('passageCard');
+  if (PASSAGE && PASSAGE.trim() && q.category === 'Reading Comprehension') {
+    document.getElementById('passageText').textContent = PASSAGE;
+    passageCard.style.display = 'block';
+  } else {
+    passageCard.style.display = 'none';
+  }
+
+  // Animate question text
+  const qt = document.getElementById('questionText');
+  if (dir) {
+    qt.style.cssText = 'transition:none;opacity:0;transform:translateX(' + (dir>0?'16px':'-16px') + ')';
+    qt.textContent   = q.text;
+    requestAnimationFrame(() => {
+      qt.style.cssText = 'transition:opacity .18s,transform .18s;opacity:1;transform:translateX(0)';
+    });
+  } else {
+    qt.textContent = q.text;
+  }
+
+  // Options
+  const ol   = document.getElementById('optionsList');
+  ol.innerHTML = '';
+  const KEYS  = ['a','b','c','d','e','f'];
+  (q.options||[]).forEach((txt, i) => {
+    const b = document.createElement('button');
+    b.className = 'opt';
+    if (answers[cur] === i) b.classList.add('sel');
+    b.innerHTML = `<span class="opt-k">${KEYS[i]}</span><span class="opt-t">${esc(txt)}</span>`;
+    b.onclick = () => pick(i);
+    ol.appendChild(b);
+  });
+
+  // Explanation (hide on nav)
+  document.getElementById('expBox').classList.remove('show');
+  document.getElementById('expText').textContent = q.explanation || '';
+
+  // Mark buttons
+  const on = reviewd[cur];
+  ['mBtnMark','dBtnMark'].forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    el.classList.toggle('on', on);
+    const sp = el.querySelector('span'); if (sp) sp.textContent = on ? 'Marked' : (isDesktop ? 'Mark for Review' : 'Review');
+  });
+
+  // Desktop prev/next
+  const dp = document.getElementById('dBtnPrev');
+  const dn = document.getElementById('dBtnNext');
+  if (dp) dp.disabled = cur === 0;
+  if (dn) { dn.textContent = cur===n-1?'Finish →':'Next →'; dn.className='btn-next'+(cur===n-1?' last':''); }
+
+  // Mobile prev/next
+  const mp = document.getElementById('mBtnPrev');
+  const mn = document.getElementById('mBtnNext');
+  if (mp) mp.disabled = cur === 0;
+  if (mn) { mn.textContent = cur===n-1?'Finish →':'Next →'; mn.className='btn-next'+(cur===n-1?' last':''); }
+
+  // Scroll top
+  const body = document.getElementById('qBody');
+  if (body) body.scrollTop = 0;
+
+  updateProgress();
+  updateStats();
+  updateAllPalettes();
+}
+
+/* ═══════════════════════════════════════════
+   ANSWER SELECTION
+═══════════════════════════════════════════ */
+function pick(i) {
+  answers[cur] = answers[cur] === i ? null : i;
+  renderQuestion();
+  if (answers[cur] !== null) {
+    const btns = document.querySelectorAll('.opt');
+    if (btns[i]) {
+      btns[i].classList.add('snap');
+      btns[i].addEventListener('animationend', () => btns[i].classList.remove('snap'), {once:true});
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════
+   NAVIGATION
+═══════════════════════════════════════════ */
+function navigate(dir) {
+  if (dir===1 && cur===QUESTIONS.length-1) { confirmSubmit(); return; }
+  const prev = cur;
+  cur = Math.max(0, Math.min(QUESTIONS.length-1, cur+dir));
+  if (cur !== prev) {
+    visited[cur] = true;
+    renderQuestion(dir);
+  }
+}
+function goTo(i) {
+  const prev = cur;
+  cur = i;
+  visited[i] = true;
+  if (!isDesktop) closePalette();
+  setTimeout(() => renderQuestion(cur > prev ? 1 : -1), isDesktop ? 0 : 180);
+}
+function toggleReview() {
+  reviewd[cur] = !reviewd[cur];
+  renderQuestion();
+}
+
+/* ═══════════════════════════════════════════
+   PROGRESS + STATS
+═══════════════════════════════════════════ */
+function updateProgress() {
+  const done = answers.filter(a => a!==null).length;
+  const n    = QUESTIONS.length;
+  document.getElementById('pbar-fill').style.width = n ? (done/n*100)+'%' : '0%';
+  document.getElementById('palProg').textContent   = done+'/'+n;
+}
+function updateStats() {
+  const done = answers.filter(a => a!==null).length;
+  const rev  = reviewd.filter(Boolean).length;
+  const vis  = visited.filter((v,i) => v && answers[i]===null && i!==cur).length;
+  const n    = QUESTIONS.length;
+  const set  = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+  set('psAns', done); set('psRev', rev); set('psVis', vis); set('psSkip', Math.max(0, n-done-vis));
+  set('sbAns', done); set('sbVis', vis); set('sbSkip', Math.max(0, n-done-vis)); set('sbRev', rev);
+}
+
+/* ═══════════════════════════════════════════
+   PALETTES  — 5 states including visited-red
+═══════════════════════════════════════════ */
+function buildPalette(gridId) {
+  const g = document.getElementById(gridId); if (!g) return;
+  g.innerHTML = '';
+  QUESTIONS.forEach((_,i) => {
+    const d = document.createElement('div');
+    d.className = 'pdot';
+    d.textContent = i+1;
+    d.id = gridId + '_' + i;
+    d.onclick = () => goTo(i);
+    g.appendChild(d);
+  });
+}
+function updateAllPalettes() {
+  ['sbPaletteGrid','sheetPaletteGrid'].forEach(gridId => {
+    QUESTIONS.forEach((_,i) => {
+      const d = document.getElementById(gridId+'_'+i); if (!d) return;
+      d.className = 'pdot';
+      if (i === cur) {
+        d.classList.add('cur');                         // always current first
+      } else if (answers[i] !== null) {
+        d.classList.add('ans');                         // answered (green) beats everything
+      } else if (reviewd[i]) {
+        d.classList.add('rev');                         // marked for review (amber)
+      } else if (visited[i]) {
+        d.classList.add('visited');                     // visited but unanswered (red)
+      }
+      // else: not yet visited — default grey
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════
+   PALETTE SHEET
+═══════════════════════════════════════════ */
+function openPalette() {
+  document.getElementById('pOverlay').classList.add('show');
+  document.getElementById('pSheet').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closePalette() {
+  document.getElementById('pOverlay').classList.remove('show');
+  document.getElementById('pSheet').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+/* ═══════════════════════════════════════════
+   SWIPE — attached after quiz starts
+═══════════════════════════════════════════ */
+function initSwipe() {
+  let sx=0, sy=0, st=0;
+  const vp = document.getElementById('qBody');
+  if (!vp) return;
+  vp.addEventListener('touchstart', e => {
+    sx=e.touches[0].clientX; sy=e.touches[0].clientY; st=Date.now();
+  }, {passive:true});
+  vp.addEventListener('touchend', e => {
+    const dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy;
+    if (Math.abs(dx)<55 || Math.abs(dy)>Math.abs(dx)*.75 || Date.now()-st>420) return;
+    if (document.getElementById('pSheet').classList.contains('show')) return;
+    navigate(dx<0?1:-1);
+  }, {passive:true});
+}
+
+/* ═══════════════════════════════════════════
+   KEYBOARD
+═══════════════════════════════════════════ */
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('quiz').classList.contains('active')) return;
+  if (e.key==='ArrowRight'||e.key==='ArrowDown') navigate(1);
+  if (e.key==='ArrowLeft' ||e.key==='ArrowUp')   navigate(-1);
+  if (/^[1-5]$/.test(e.key)) pick(+e.key-1);
+  if (e.key==='r'||e.key==='R') toggleReview();
+});
+
+/* ═══════════════════════════════════════════
+   SUBMIT CONFIRM MODAL  — no browser confirm()
+═══════════════════════════════════════════ */
+function confirmSubmit() {
+  const left = answers.filter(a=>a===null).length;
+  if (left === 0) { submitQuiz(); return; }
+  showModal(
+    '⚠️ Submit Test?',
+    `You have <b>${left}</b> unanswered question${left>1?'s':''}. Are you sure you want to submit?`,
+    'Submit Anyway', 'Go Back',
+    submitQuiz, null
+  );
+}
+
+function showModal(title, body, confirmTxt, cancelTxt, onConfirm, onCancel) {
+  const overlay = document.getElementById('modalOverlay');
+  document.getElementById('modalTitle').textContent   = title;
+  document.getElementById('modalBody').innerHTML      = body;
+  document.getElementById('modalConfirm').textContent = confirmTxt;
+  document.getElementById('modalCancel').textContent  = cancelTxt || 'Cancel';
+  document.getElementById('modalConfirm').onclick = () => { closeModal(); if(onConfirm) onConfirm(); };
+  document.getElementById('modalCancel').onclick  = () => { closeModal(); if(onCancel)  onCancel(); };
+  overlay.classList.add('show');
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+function submitQuiz() {
+  if (submitted) return;
+  submitted = true;
+  clearInterval(timerID);
+  ['topbar','bottombar','pbar'].forEach(id => {
+    const el=document.getElementById(id); if(el) el.style.display='none';
+  });
+  showScore();
+}
+
+/* ═══════════════════════════════════════════
+   SCORE SCREEN
+═══════════════════════════════════════════ */
+function showScore() {
+  let correct=0, wrong=0, skip=0;
+  QUESTIONS.forEach((q,i) => {
+    if      (answers[i]===null)      skip++;
+    else if (answers[i]===q.correct) correct++;
+    else                             wrong++;
+  });
+  const n       = QUESTIONS.length;
+  const score   = correct*POS - wrong*NEG;
+  const maxSc   = n*POS;
+  const acc     = (correct+wrong)>0 ? Math.round(correct/(correct+wrong)*100) : 0;
+  const pct     = maxSc>0 ? score/maxSc : 0;
+  const emoji   = pct>=.8?'🏆':pct>=.6?'🎉':pct>=.4?'👍':'📚';
+  const phrase  = pct>=.8?'Outstanding!':pct>=.6?'Great Work!':pct>=.4?'Good Effort':'Keep Practicing';
+
+  const S = id => document.getElementById(id);
+  S('scoreEmoji').textContent    = emoji;
+  S('scoreTitle').textContent    = phrase;
+  S('scoreSubtitle').textContent = TITLE;
+  S('scoreBigNum').textContent   = score.toFixed(2);
+  S('scoreBigDen').textContent   = '/'+maxSc;
+  S('tCor').textContent   = correct;
+  S('tWrg').textContent   = wrong;
+  S('tSkp').textContent   = skip;
+  S('tAcc').textContent   = acc+'%';
+  const m=Math.floor(elapsed/60), s=elapsed%60;
+  S('tTim').textContent   = m+'m '+s+'s';
+  S('tPct').textContent   = Math.round(Math.min(99,Math.max(1,pct*80+15)))+'th';
+  S('rvSub').textContent  = correct+' ✓  '+wrong+' ✗  '+skip+' —';
+
+  const list = S('reviewList');
+  list.innerHTML = '';
+  const KEYS = ['a','b','c','d','e','f'];
+  QUESTIONS.forEach((q,i) => {
+    const isSkip = answers[i]===null;
+    const isOk   = answers[i]===q.correct;
+    const ic     = isSkip?'skip':isOk?'ok':'bad';
+    const it     = isSkip?'—':isOk?'✓':'✗';
+    const myA    = answers[i]!==null ? `(${KEYS[answers[i]]}) ${(q.options[answers[i]]||'').substring(0,50)}` : null;
+    const crA    = `(${KEYS[q.correct]}) ${(q.options[q.correct]||'').substring(0,50)}`;
+    const delta  = isSkip?'':isOk?`+${POS}`:`−${NEG}`;
+
+    const card   = document.createElement('div');
+    card.className = 'rv-card';
+    card.innerHTML = `
+      <div class="rv-card-head">
+        <div class="rv-icon ${ic}">${it}</div>
+        <div style="flex:1;min-width:0">
+          <div class="rv-qn">Q${i+1} · ${esc(q.category||'General')}</div>
+          <div class="rv-qt">${esc(q.text.substring(0,105))}${q.text.length>105?'…':''}</div>
+        </div>
+      </div>
+      <div class="rv-chips">
+        ${myA ? `<span class="rchip ${isOk?'ok':'bad'}">${esc(myA)}</span>` : `<span class="rchip skip">Not attempted</span>`}
+        ${!isOk ? `<span class="rchip ok">✓ ${esc(crA)}</span>` : ''}
+        ${delta ? `<span class="rchip ${isOk?'dp':'dn'}">${delta}</span>` : ''}
+      </div>
+      ${q.explanation ? `<div class="rv-exp"><div class="rv-exp-txt">${esc(q.explanation.substring(0,200))}${q.explanation.length>200?'…':''}</div></div>` : ''}
+    `;
+    list.appendChild(card);
+  });
+
+  showScreen('score');
+}
+
+/* ═══════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════ */
+function esc(s) {
+  return String(s||'')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE REBUILD
+═══════════════════════════════════════════ */
+window.addEventListener('resize', () => {
+  const was = isDesktop;
+  isDesktop  = window.innerWidth >= 768;
+  if (was !== isDesktop && document.getElementById('quiz').classList.contains('active')) {
+    setupLayout();
+    if (isDesktop) buildPalette('sbPaletteGrid');
+    else           buildPalette('sheetPaletteGrid');
+    updateAllPalettes();
+  }
+});
+</script>
+<!-- ══════════════════════════════
+     CONFIRM MODAL
+══════════════════════════════ -->
+<div id="modalOverlay" onclick="closeModal()">
+  <div id="modalBox" onclick="event.stopPropagation()">
+    <div id="modalTitle"></div>
+    <div id="modalBody"></div>
+    <div id="modalBtns">
+      <button id="modalCancel">Cancel</button>
+      <button id="modalConfirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
