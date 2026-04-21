@@ -58,18 +58,20 @@ async def file_received_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ Only `.html` files are accepted here.")
         return WAITING_FOR_FILE
 
-    msg = await update.message.reply_text("⏳ Downloading & extracting quiz data...")
+    status = await update.message.reply_text("⏳ Downloading file...")
 
     # Download the file
     tmp_path = os.path.join(TEMP_DIR, f"{update.effective_user.id}_{doc.file_name}")
     tg_file = await ctx.bot.get_file(doc.file_id)
     await tg_file.download_to_drive(tmp_path)
 
+    await update.message.reply_text("🔍 Extracting quiz data via Playwright... (may take 10–20s)")
+
     # Extract quiz data via Playwright
     quiz_data = await extract_quiz_from_html(tmp_path)
 
     if not quiz_data:
-        await msg.edit_text(
+        await update.message.reply_text(
             "❌ Could not extract `quizData` from this HTML.\n\n"
             "Make sure the file has a `quizData` JavaScript variable.",
             parse_mode="Markdown"
@@ -84,16 +86,15 @@ async def file_received_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     flow = ctx.user_data.get(KEY_MODE, "extract")
 
     if flow == "both":
-        # Skip mode selection — generate both directly
-        await msg.edit_text(
+        await update.message.reply_text(
             f"✅ Extracted *{len(quiz_data['questions'])}* questions from `{doc.file_name}`\n"
-            f"⚙️ Generating both HTMLs...",
+            f"⚙️ Generating both HTMLs now...",
             parse_mode="Markdown"
         )
-        await _send_outputs(update, ctx, "both", msg)
+        await _send_outputs(update, ctx, "both")
         return ConversationHandler.END
     else:
-        await msg.edit_text(
+        await update.message.reply_text(
             f"✅ Extracted *{len(quiz_data['questions'])}* questions from `{doc.file_name}`\n\n"
             f"Choose output format:",
             parse_mode="Markdown",
@@ -160,17 +161,17 @@ async def generate_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
         return WAITING_FOR_MODE
 
-    msg = await update.message.reply_text(
+    await update.message.reply_text(
         f"⚙️ Generating `{mode}` output...",
         parse_mode="Markdown",
         reply_markup=ReplyKeyboardRemove()
     )
-    await _send_outputs(update, ctx, mode, msg)
+    await _send_outputs(update, ctx, mode)
     return ConversationHandler.END
 
 
 # ── Internal: build & send files ──────────────────────────────────────────────
-async def _send_outputs(update, ctx, mode, status_msg=None):
+async def _send_outputs(update, ctx, mode):
     quiz_data = ctx.user_data.get(KEY_QUIZ_DATA)
     test_name = ctx.user_data.get(KEY_TEST_NAME, "quiz")
     safe_name = test_name.replace(" ", "_").lower()
@@ -189,7 +190,7 @@ async def _send_outputs(update, ctx, mode, status_msg=None):
             await update.message.reply_document(
                 document=open(gl_path, "rb"),
                 filename=f"{safe_name}_gangleader.html",
-                caption="🏆 *GangLeader* HTML",
+                caption="🏆 *GangLeader* HTML — ready to use!",
                 parse_mode="Markdown"
             )
 
@@ -201,35 +202,30 @@ async def _send_outputs(update, ctx, mode, status_msg=None):
             await update.message.reply_document(
                 document=open(sv_path, "rb"),
                 filename=f"{safe_name}_sienova.html",
-                caption="📘 *Sienova* HTML",
+                caption="📘 *Sienova* HTML — ready to use!",
                 parse_mode="Markdown"
             )
 
         if mode in ("json", "both"):
-            import json
+            import json as _json
             json_path = os.path.join(TEMP_DIR, f"{uid}_{safe_name}.json")
             with open(json_path, "w", encoding="utf-8") as f:
-                json.dump(quiz_data, f, ensure_ascii=False, indent=2)
+                _json.dump(quiz_data, f, ensure_ascii=False, indent=2)
             await update.message.reply_document(
                 document=open(json_path, "rb"),
                 filename=f"{safe_name}.json",
-                caption="📄 Extracted *JSON*",
+                caption="📄 Extracted *JSON* data",
                 parse_mode="Markdown"
             )
 
-        done_text = f"✅ Done! Generated `{mode}` output for *{test_name}*."
-        if status_msg:
-            await status_msg.edit_text(done_text, parse_mode="Markdown")
-        else:
-            await update.message.reply_text(done_text, parse_mode="Markdown")
+        await update.message.reply_text(
+            f"✅ Done! `{mode}` output generated for *{test_name}*.",
+            parse_mode="Markdown"
+        )
 
     except Exception as e:
         logger.exception("Error generating output")
-        err = f"❌ Error during generation: {e}"
-        if status_msg:
-            await status_msg.edit_text(err)
-        else:
-            await update.message.reply_text(err)
+        await update.message.reply_text(f"❌ Error during generation: {e}")
 
     finally:
         ctx.user_data.clear()
