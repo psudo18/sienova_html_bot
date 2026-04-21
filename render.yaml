@@ -1,0 +1,14 @@
+services:
+  - type: worker
+    name: sienova-converter-bot
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: ALLOWED_USERS
+        sync: false
+      - key: LOG_LEVEL
+        value: INFO
+      - key: TEMP_DIR
+        value: /tmp/sienova_bot

@@ -1,0 +1,14 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+/tmp/
+/tmp/sienova_bot/
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.DS_Store
