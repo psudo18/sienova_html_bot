@@ -2,17 +2,15 @@
 """Sienova Converter Bot — entry point"""
 
 import logging
-import os
 from telegram import Update
 from telegram.ext import (
     Application, CommandHandler, MessageHandler,
-    filters, ContextTypes, ConversationHandler
+    filters, ConversationHandler
 )
-from handlers.auth import require_auth
 from handlers.commands import start_handler, help_handler, status_handler
-from handlers.generate import extract_handler, json_to_html_handler, html_to_both_handler
 from handlers.conversation import (
     WAITING_FOR_FILE, WAITING_FOR_JSON, WAITING_FOR_MODE, BATCH_COLLECTING,
+    extract_handler, html_to_both_handler, json_to_html_handler, pdf_handler,
     file_received_handler, json_received_handler,
     batch_collect_handler, generate_handler, cancel_handler
 )
@@ -37,14 +35,13 @@ def main():
             CommandHandler("extract", extract_handler),
             CommandHandler("fromjson", json_to_html_handler),
             CommandHandler("both",    html_to_both_handler),
+            CommandHandler("pdf",     pdf_handler),
         ],
         states={
-            # New batch collection state — receives multiple HTML files
             BATCH_COLLECTING: [
                 MessageHandler(filters.Document.ALL, batch_collect_handler),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, batch_collect_handler),
             ],
-            # Legacy single-file state (kept for /both single-file path)
             WAITING_FOR_FILE: [
                 MessageHandler(filters.Document.ALL, file_received_handler),
             ],

@@ -18,7 +18,8 @@ HELP_TEXT = """
 📥 *Extract & Convert*
 `/extract` — Upload an HTML quiz file → get JSON + HTML(s)
 `/fromjson` — Upload / paste JSON → get HTML(s)
-`/both` — Upload HTML → get BOTH GangLeader & Sienova HTMLs
+`/both` — Upload HTML(s) → get GangLeader + Sienova + JSON
+`/pdf` — Upload IBPS PDF(s) → extract & build HTMLs (no Playwright)
 
 📋 *Other*
 `/status` — Bot health check

@@ -26,7 +26,7 @@ def build_html(quiz_data: dict, brand: str = "gangleader") -> str:
     questions  = quiz_data.get("questions", [])
     test_name  = quiz_data.get("test_name", "Quiz")
     total      = len(questions)
-    total_sec  = 60 * 60
+    total_sec  = quiz_data.get("duration_sec", 60 * 60)
     mins       = total_sec // 60
 
     if brand == "gangleader":
