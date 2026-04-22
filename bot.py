@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-Sienova Converter Bot - GangLeader Quiz Platform
-Main entry point
-"""
+"""Sienova Converter Bot — entry point"""
 
 import logging
 import os
@@ -12,16 +9,12 @@ from telegram.ext import (
     filters, ContextTypes, ConversationHandler
 )
 from handlers.auth import require_auth
-from handlers.commands import (
-    start_handler, help_handler, status_handler
-)
-from handlers.generate import (
-    extract_handler, json_to_html_handler, html_to_both_handler
-)
+from handlers.commands import start_handler, help_handler, status_handler
+from handlers.generate import extract_handler, json_to_html_handler, html_to_both_handler
 from handlers.conversation import (
-    WAITING_FOR_FILE, WAITING_FOR_JSON,
-    WAITING_FOR_MODE, file_received_handler,
-    json_received_handler, generate_handler, cancel_handler
+    WAITING_FOR_FILE, WAITING_FOR_JSON, WAITING_FOR_MODE, BATCH_COLLECTING,
+    file_received_handler, json_received_handler,
+    batch_collect_handler, generate_handler, cancel_handler
 )
 from config import BOT_TOKEN, LOG_LEVEL
 
@@ -34,37 +27,42 @@ logger = logging.getLogger(__name__)
 
 def main():
     if not BOT_TOKEN:
-        logger.error("BOT_TOKEN not set in environment. Exiting.")
+        logger.error("BOT_TOKEN not set. Exiting.")
         return
 
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # Conversation handler: /extract → upload HTML → choose mode → get HTML(s)
-    conv_handler = ConversationHandler(
+    conv = ConversationHandler(
         entry_points=[
             CommandHandler("extract", extract_handler),
             CommandHandler("fromjson", json_to_html_handler),
-            CommandHandler("both", html_to_both_handler),
+            CommandHandler("both",    html_to_both_handler),
         ],
         states={
+            # New batch collection state — receives multiple HTML files
+            BATCH_COLLECTING: [
+                MessageHandler(filters.Document.ALL, batch_collect_handler),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, batch_collect_handler),
+            ],
+            # Legacy single-file state (kept for /both single-file path)
             WAITING_FOR_FILE: [
-                MessageHandler(filters.Document.ALL, file_received_handler)
+                MessageHandler(filters.Document.ALL, file_received_handler),
             ],
             WAITING_FOR_JSON: [
                 MessageHandler(filters.Document.ALL, json_received_handler),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, json_received_handler),
             ],
             WAITING_FOR_MODE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, generate_handler)
+                MessageHandler(filters.TEXT & ~filters.COMMAND, generate_handler),
             ],
         },
         fallbacks=[CommandHandler("cancel", cancel_handler)],
         allow_reentry=True,
     )
 
-    app.add_handler(conv_handler)
-    app.add_handler(CommandHandler("start", start_handler))
-    app.add_handler(CommandHandler("help", help_handler))
+    app.add_handler(conv)
+    app.add_handler(CommandHandler("start",  start_handler))
+    app.add_handler(CommandHandler("help",   help_handler))
     app.add_handler(CommandHandler("status", status_handler))
 
     logger.info("Sienova Bot starting...")
