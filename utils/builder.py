@@ -12,6 +12,22 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 LABELS = ["A", "B", "C", "D", "E", "F"]
+
+
+def _sanitize(text: str) -> str:
+    """Remove control characters that break inline JSON in <script> tags."""
+    import unicodedata
+    # Replace newlines/tabs with space, strip other control chars
+    result = []
+    for c in (text or ""):
+        if c in ("\n", "\r", "\t"):
+            result.append(" ")
+        elif unicodedata.category(c) == "Cc":
+            pass  # drop control chars
+        else:
+            result.append(c)
+    return " ".join("".join(result).split())  # also collapse multiple spaces
+
 _HERE  = Path(__file__).parent
 
 
@@ -45,10 +61,10 @@ def _gangleader(questions, test_name, total, total_sec, mins):
         cl   = q.get("correct_answer", "A")
         ci   = LABELS.index(cl) if cl in LABELS else 0
         items.append({
-            "text":        q.get("question_text", ""),
-            "options":     opts,
+            "text":        _sanitize(q.get("question_text", "")),
+            "options":     [_sanitize(o) for o in opts],
             "correct":     ci,
-            "explanation": q.get("solution", ""),
+            "explanation": _sanitize(q.get("solution", "")),
             "category":    "General",
         })
 
@@ -64,17 +80,13 @@ def _gangleader(questions, test_name, total, total_sec, mins):
     out = out.replace("{{MAX_MARKS}}",     str(total))
     out = out.replace("{{TOPBAR_NAME}}",   test_name)
 
-    # JS placeholders  /*{{KEY}}*/default_value
-    out = re.sub(r'/\*\{\{QUESTIONS\}\}\*/\[\]',
-                 f'/*{{{{QUESTIONS}}}}*/{js_q}', out)
-    out = re.sub(r'/\*\{\{PASSAGE\}\}\*/``',
-                 '/*{{PASSAGE}}*/``', out)
-    out = re.sub(r'/\*\{\{TITLE\}\}\*/"[^"]*"',
-                 f'/*{{{{TITLE}}}}*/{json.dumps(test_name)}', out)
-    out = re.sub(r'/\*\{\{POS\}\}\*/[\d.]+',     f'/*{{{{POS}}}}*/1',          out)
-    out = re.sub(r'/\*\{\{NEG\}\}\*/[\d.]+',     f'/*{{{{NEG}}}}*/0.25',       out)
-    out = re.sub(r'/\*\{\{TOTAL_SEC\}\}\*/[\d ]*\*[\d ]*',
-                 f'/*{{{{TOTAL_SEC}}}}*/ {total_sec}', out)
+    # JS placeholders: strip comment wrapper, inject clean values
+    out = re.sub(r'/\*\{\{QUESTIONS\}\}\*/\[\]',         js_q,                  out)
+    out = re.sub(r'/\*\{\{PASSAGE\}\}\*/``',               '``',                  out)
+    out = re.sub(r'/\*\{\{TITLE\}\}\*/"[^"]*"',         json.dumps(test_name), out)
+    out = re.sub(r'/\*\{\{POS\}\}\*/[\d.]+',              '1',                   out)
+    out = re.sub(r'/\*\{\{NEG\}\}\*/[\d.]+',              '0.25',                out)
+    out = re.sub(r'/\*\{\{TOTAL_SEC\}\}\*/[\d ]*\*[\d ]*', str(total_sec),     out)
 
     return out
 
@@ -97,10 +109,10 @@ def _sienova(questions, test_name, total, total_sec, mins):
         cl   = q.get("correct_answer", "A")
         ci   = LABELS.index(cl) if cl in LABELS else 0
         items.append({
-            "t": q.get("question_text", ""),
-            "o": opts,
+            "t": _sanitize(q.get("question_text", "")),
+            "o": [_sanitize(o) for o in opts],
             "a": ci,
-            "s": q.get("solution", ""),
+            "s": _sanitize(q.get("solution", "")),
         })
     js_q = json.dumps(items, ensure_ascii=False)
 
