@@ -880,6 +880,15 @@ html[data-theme="light"] .s-neg { background: rgba(214,60,60,0.10); border-color
           <span class="score-tag s-neg">-0.25</span>
         </div>
       </div>
+      <!-- Direction instruction line -->
+      <div id="sv-direction" style="display:none;background:rgba(184,134,11,0.07);border-left:3px solid var(--gold);padding:10px 14px;border-radius:0 8px 8px 0;font-size:0.84rem;font-weight:700;color:var(--snow);margin-bottom:12px;line-height:1.6;"></div>
+
+      <!-- Passage (Reading Comprehension) -->
+      <div id="sv-passage" style="display:none;background:rgba(0,0,0,0.03);border:1px solid var(--line);border-radius:10px;padding:14px 16px;font-size:0.86rem;line-height:1.85;color:var(--snow);margin-bottom:14px;max-height:220px;overflow-y:auto;"></div>
+
+      <!-- Chart / Graph image -->
+      <div id="sv-chart" style="display:none;margin-bottom:12px;text-align:center;"></div>
+
       <div class="q-body" id="q-text"></div>
       <div class="opts" id="opts"></div>
       <div class="sol-box" id="sol-box">
@@ -1052,7 +1061,32 @@ function render(idx, fromPal = false) {
   cur = idx;
   const q = Q[idx];
   document.getElementById('q-label').textContent = `Q ${idx + 1} / ${Q.length}`;
-  document.getElementById('q-text').innerHTML = q.t;
+
+  // Direction line
+  const dirEl = document.getElementById('sv-direction');
+  if (dirEl) {
+    if (q.d && q.d.trim()) { dirEl.textContent = q.d; dirEl.style.display = 'block'; }
+    else dirEl.style.display = 'none';
+  }
+
+  // Passage (RC)
+  const pasEl = document.getElementById('sv-passage');
+  if (pasEl) {
+    if (q.p && q.p.trim()) { pasEl.textContent = q.p; pasEl.style.display = 'block'; }
+    else pasEl.style.display = 'none';
+  }
+
+  // Chart image
+  const chEl = document.getElementById('sv-chart');
+  if (chEl) {
+    if (q.c && q.c.trim()) {
+      chEl.innerHTML = '<img src="data:image/png;base64,' + q.c + '" style="max-width:100%;border-radius:8px;margin:6px 0;" alt="Chart">';
+      chEl.style.display = 'block';
+    } else chEl.style.display = 'none';
+  }
+
+  // Question stem
+  document.getElementById('q-text').textContent = q.t || '';
 
   const wrap = document.getElementById('opts');
   wrap.innerHTML = '';

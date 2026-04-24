@@ -1,46 +1,66 @@
 """
-PDF Quiz Parser — Improved
+PDF Quiz Parser — v3
 Handles:
-- PDFs where extract_text() returns None (fallback to extract_words)
-- Group instruction lines (shared across questions)
-- Image-based questions (pie chart / bar graph) — noted in text
-- Page-break noise inside option lists
-- Newline sanitization for safe JS embedding
+1. Font-encoded PDFs where extract_text() returns None → word-join fallback
+2. Direction lines (bold instruction) shown separately from question stem
+3. Reading comprehension passages shown as context, not merged into question
+4. Chart/graph images EXTRACTED and embedded as base64 in question text
+5. Watermark noise stripped from within option text
+6. Page-break artifacts removed
+7. Missing options detected (watermark covered text)
 """
 
 import re
+import io
+import base64
 import logging
 from datetime import datetime
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-# ── Noise patterns ────────────────────────────────────────────────────────────
+LABELS = ["A", "B", "C", "D", "E", "F"]
+
+# ── Noise patterns ─────────────────────────────────────────────────────────────
 _HEADER_NOISE = re.compile(
-    r'^(IBPS\s+PO.*|Page\s+\d+.*|@JethaBanker.*|Guidely.*|'
+    r'^(IBPS\s+PO.*|Page\s+\d+\s+Of\s+\d+.*|@JethaBanker.*|Guidely.*|'
     r'Get it on.*|Google Play.*|\(Day-\d+\))\s*$',
     re.MULTILINE | re.IGNORECASE
 )
 
-# Image/chart indicators — questions that reference a visual
-_CHART_HINT = re.compile(
-    r'\b(pie chart|bar graph|bar chart|table|line graph|histogram|'
-    r'venn diagram|data given below|refer.*(?:table|chart|graph))\b',
+# Inline watermarks (partial, overlapping text)
+_INLINE_WM = re.compile(
+    r'@(?:Jetha|Jeth|Jet|Je|J)[\w. ]*(?:Banker|anker|nker|ker|er)?\b',
     re.IGNORECASE
 )
 
-# Group instruction patterns (shared context for multiple questions)
-_GROUP_INSTRUCTION = re.compile(
-    r'^(?:study the following|read the following|in (?:each|the following)|'
-    r'directions?:|note:|what (?:approximate )?value)',
+# Direction/instruction line patterns (these are the bold intro lines)
+_DIRECTION_PATTERNS = [
+    r'^In (?:each|the following)',
+    r'^Read the following',
+    r'^Study the following',
+    r'^Directions?\s*:',
+    r'^What (?:approximate )?value',
+    r'^Find the (?:wrong|missing)',
+    r'^For the following',
+    r'^Choose the (?:correct|most|option)',
+]
+_IS_DIRECTION = re.compile(
+    '|'.join(_DIRECTION_PATTERNS), re.IGNORECASE
+)
+
+# Chart / image reference in text
+_CHART_REF = re.compile(
+    r'\b(pie chart|bar graph|bar chart|line graph|table given|'
+    r'histogram|venn diagram|data given below|graph given below|'
+    r'chart given below|refer (?:to )?(?:the )?(?:table|chart|graph|figure))\b',
     re.IGNORECASE
 )
 
-LABELS = ["A", "B", "C", "D", "E", "F"]
-
+# ── Main entry ─────────────────────────────────────────────────────────────────
 
 def parse_pdf(pdf_path: str, test_name: str | None = None) -> dict | None:
-    """Parse an IBPS-style PDF quiz. Returns quiz_data dict or None."""
+    """Parse an IBPS-style quiz PDF. Returns quiz_data dict or None."""
     try:
         import pdfplumber
     except ImportError:
@@ -48,28 +68,28 @@ def parse_pdf(pdf_path: str, test_name: str | None = None) -> dict | None:
         return None
 
     try:
-        full_text = _extract_text(pdf_path)
+        pages_text, page_images = _extract_all(pdf_path)
     except Exception as e:
         logger.error("Failed to read PDF %s: %s", pdf_path, e)
         return None
+
+    full_text = "\n".join(pages_text)
 
     if not full_text or len(full_text.strip()) < 100:
         logger.warning("No text extracted from %s", pdf_path)
         return None
 
-    # Split at Explanations section
     exp_idx = _find_explanations(full_text)
     q_raw = full_text[:exp_idx] if exp_idx != -1 else full_text
     ex_raw = full_text[exp_idx:] if exp_idx != -1 else ""
 
-    questions  = _parse_questions(q_raw)
+    questions  = _parse_questions(q_raw, page_images)
     answer_map = _parse_explanations(ex_raw)
 
     if not questions:
         logger.warning("No questions found in %s", pdf_path)
         return None
 
-    # Merge answers
     for q in questions:
         ans = answer_map.get(q["question_number"], {})
         q["correct_answer"] = ans.get("correct_answer")
@@ -85,38 +105,99 @@ def parse_pdf(pdf_path: str, test_name: str | None = None) -> dict | None:
     }
 
 
-# ── Text extraction ───────────────────────────────────────────────────────────
+# ── Extraction ─────────────────────────────────────────────────────────────────
 
-def _extract_text(pdf_path: str) -> str:
-    """Extract text from PDF, falling back to word-join if needed."""
+def _extract_all(pdf_path: str):
+    """Extract text + chart images. Tries 4 strategies for difficult PDFs."""
     import pdfplumber
 
-    pages_text = []
+    pages_text  = []
+    page_images = {}
+
     with pdfplumber.open(pdf_path) as pdf:
-        for page in pdf.pages:
-            # Primary: extract_text()
+        for page_num, page in enumerate(pdf.pages):
+
+            # Strategy 1: standard
             text = page.extract_text()
 
-            # Fallback: reconstruct from words (handles some encoded fonts)
+            # Strategy 2: layout mode
             if not text or len(text.strip()) < 20:
-                words = page.extract_words(
-                    x_tolerance=3, y_tolerance=3,
-                    keep_blank_chars=False, use_text_flow=True
-                )
-                if words:
-                    # Group words into lines by y-position
-                    lines = {}
-                    for w in words:
-                        y = round(w["top"])
-                        lines.setdefault(y, []).append(w["text"])
-                    text = "\n".join(
-                        " ".join(lines[y]) for y in sorted(lines)
-                    )
+                try:
+                    text = page.extract_text(layout=True)
+                except Exception:
+                    text = None
 
-            if text:
+            # Strategy 3: word-box reconstruction (several tolerances)
+            if not text or len(text.strip()) < 20:
+                for xt in [2, 5, 10]:
+                    try:
+                        words = page.extract_words(
+                            x_tolerance=xt, y_tolerance=3,
+                            keep_blank_chars=False, use_text_flow=True
+                        )
+                        if words:
+                            lines = {}
+                            for w in words:
+                                y = round(w["top"] / 4) * 4
+                                lines.setdefault(y, []).append(w["text"])
+                            text = "\n".join(
+                                " ".join(lines[y]) for y in sorted(lines)
+                            )
+                            if len((text or "").strip()) >= 20:
+                                break
+                    except Exception:
+                        pass
+
+            # Strategy 4: char-level reconstruction
+            if not text or len(text.strip()) < 20:
+                try:
+                    chars = page.chars
+                    if chars:
+                        lines = {}
+                        for c in chars:
+                            ch = c.get("text", "")
+                            if not ch.strip():
+                                continue
+                            y = round(float(c.get("top", 0)) / 5) * 5
+                            lines.setdefault(y, []).append(ch)
+                        text = "\n".join(
+                            "".join(lines[y]) for y in sorted(lines)
+                        )
+                except Exception:
+                    pass
+
+            if text and len(text.strip()) >= 5:
                 pages_text.append(text)
 
-    return "\n".join(pages_text)
+            # ── Chart images ──
+            charts = []
+            for img in page.images:
+                w = img.get("width", 0)
+                h = img.get("height", 0)
+                # Skip header/footer logos (small images near top/bottom)
+                top = img.get("top", 0)
+                page_h = float(page.height)
+                if w < 200 or h < 150:
+                    continue
+                if top < 50 or top > page_h - 50:
+                    continue
+                # This looks like a chart — crop & encode
+                try:
+                    bbox = (img["x0"], img["top"], img["x1"], img["bottom"])
+                    cropped = page.crop(bbox)
+                    pil_img = cropped.to_image(resolution=120).original
+                    buf = io.BytesIO()
+                    pil_img.save(buf, format="PNG", optimize=True)
+                    b64 = base64.b64encode(buf.getvalue()).decode()
+                    charts.append(b64)
+                    logger.info("Extracted chart image from page %d (%dx%d)", page_num+1, int(w), int(h))
+                except Exception as e:
+                    logger.warning("Chart extraction failed page %d: %s", page_num+1, e)
+
+            if charts:
+                page_images[page_num] = charts
+
+    return pages_text, page_images
 
 
 def _find_explanations(text: str) -> int:
@@ -127,59 +208,92 @@ def _find_explanations(text: str) -> int:
     return -1
 
 
-# ── Question parsing ──────────────────────────────────────────────────────────
+# ── Question parsing ───────────────────────────────────────────────────────────
 
-def _parse_questions(raw: str) -> list:
+def _parse_questions(raw: str, page_images: dict) -> list:
     clean = _clean_noise(raw)
 
     # Split on "N. Questions" markers
     blocks = re.split(r'\n(\d+)\. Questions\n', clean)
-    # [preamble, '1', body1, '2', body2, ...]
 
-    questions = []
-    prev_group_instruction = ""   # track shared instruction across questions
+    # Flatten page_images into a list in order
+    all_charts = []
+    for pg in sorted(page_images.keys()):
+        all_charts.extend(page_images[pg])
+    chart_idx = [0]  # mutable pointer
+
+    questions       = []
+    last_direction  = ""   # shared instruction line for a group
+    last_passage    = ""   # shared passage for RC questions
 
     for i in range(1, len(blocks) - 1, 2):
         num  = int(blocks[i])
-        body = _clean_page_noise(blocks[i + 1].strip())
+        body = _clean_page_noise(blocks[i + 1])
 
-        # Extract options
-        options, body_without_opts = _extract_options(body)
+        # Extract options first
+        options, pre_opts = _extract_options(body)
 
         if not options:
-            # Skip questions with no options (pure instructions or image-only)
-            logger.debug("Q%d skipped — no options found", num)
+            # No options = probably a pure instruction block, skip silently
             continue
 
-        # Split question text from any group instruction
-        q_text, group_inst = _split_instruction(body_without_opts)
+        # Parse the pre-options text into: direction + passage/context + question stem
+        direction, passage, q_stem = _parse_pre_opts(pre_opts)
 
-        # If this question has no real text (just repeating group instruction), use the group instruction
-        if not q_text.strip() and group_inst:
-            q_text = group_inst
-        elif group_inst:
-            # Store as shared context
-            prev_group_instruction = group_inst
-            q_text = group_inst + "\n\n" + q_text if q_text.strip() else group_inst
-        elif not q_text.strip() and prev_group_instruction:
-            # Carry forward the last group instruction (e.g. Q2-Q5 after Q1 sets it)
-            q_text = prev_group_instruction + "\n\n" + q_text
+        # --- Direction line handling ---
+        if direction:
+            # New direction = new group, reset passage
+            last_direction = direction
+            last_passage   = ""
         
-        # Clean up the question text
-        q_text = _sanitize(q_text)
+        # --- Passage handling ---
+        if passage:
+            last_passage = passage
 
-        if not q_text:
-            logger.debug("Q%d skipped — empty question text", num)
+        # --- Question stem ---
+        if not q_stem.strip():
+            # Stem is empty — this is a follow-up question using shared context
+            q_stem = ""
+
+        # Build the final question_text
+        # We store direction, passage, stem separately so the HTML can display them nicely
+        # Format: direction||passage||stem  (split by || in builder)
+        direction_part = last_direction
+        passage_part   = last_passage
+        stem_part      = _sanitize(q_stem) if q_stem.strip() else ""
+
+        if not stem_part and not direction_part:
             continue
 
-        # Note if question references a chart/image
-        if _CHART_HINT.search(q_text):
-            q_text = q_text + " [Note: Chart/Graph referenced in original — refer to source PDF]"
+        # Chart image assignment:
+        # Group key = direction + passage together.
+        # When this combo changes → new chart group → advance chart index.
+        # ALL questions within the same group get the same chart.
+        full_context = direction_part + " " + passage_part + " " + stem_part
+        has_chart_ref = bool(_CHART_REF.search(full_context))
+        chart_b64 = None
+        if has_chart_ref and all_charts:
+            group_key = (direction_part.strip()[:60], passage_part.strip()[:60])
+            last_group = (
+                (questions[-1].get("direction","").strip()[:60],
+                 questions[-1].get("passage","").strip()[:60])
+                if questions else None
+            )
+            # Advance to next chart only when group_key changes
+            if last_group is not None and last_group != group_key:
+                if chart_idx[0] < len(all_charts) - 1:
+                    chart_idx[0] += 1
+            # Give every question in this group the current chart
+            if chart_idx[0] < len(all_charts):
+                chart_b64 = all_charts[chart_idx[0]]
 
         questions.append({
             "id":              num,
             "question_number": num,
-            "question_text":   q_text,
+            "question_text":   stem_part,
+            "direction":       _sanitize(direction_part),
+            "passage":         _sanitize(passage_part),
+            "chart_image":     chart_b64,   # base64 PNG or None
             "marks":           1,
             "correct_answer":  None,
             "options":         options,
@@ -190,110 +304,153 @@ def _parse_questions(raw: str) -> list:
 
 
 def _clean_noise(text: str) -> str:
-    """Remove header/footer noise lines."""
     return _HEADER_NOISE.sub("", text)
 
 
 def _clean_page_noise(text: str) -> str:
-    """Remove page-break artifacts that appear mid-question."""
-    # Remove lines that are just "(Day-N)" or "Page N Of M" stuck inside content
+    """Remove page-break artifacts that land mid-question."""
     text = re.sub(r'\n\(Day-\d+\)\n', '\n', text)
     text = re.sub(r'\nPage\s+\d+\s+Of\s+\d+\n', '\n', text, flags=re.IGNORECASE)
-    text = re.sub(r'\n@JethaBanker\n', '\n', text)
-    # Collapse 3+ blank lines to 1
+    text = re.sub(r'\n@JethaBanker\n?', '\n', text)
+    text = re.sub(r'\nIBPS PO Prelims PDF Course \d+\n', '\n', text)
+    text = re.sub(r'\nIBPS PO Prelims \d+ .*?\n', '\n', text)
     text = re.sub(r'\n{3,}', '\n\n', text)
     return text.strip()
 
 
-def _extract_options(body: str) -> tuple[list, str]:
-    """
-    Extract option lines (a. text / b. text ...) from body.
-    Returns (options_list, body_without_options).
-    """
-    # Find first option
+def _extract_options(body: str) -> tuple:
+    """Extract lettered options (a. / b. ...) from question body."""
     first_opt = re.search(r'\n[a-e]\. ', body)
     if not first_opt:
         return [], body
 
-    text_before = body[:first_opt.start()].strip()
-    opts_section = body[first_opt.start():]
+    pre  = body[:first_opt.start()].strip()
+    opts = body[first_opt.start():]
 
-    # Extract all options
     raw_opts = re.findall(
         r'\n([a-e])\. (.+?)(?=\n[a-e]\. |\Z)',
-        "\n" + opts_section,
+        "\n" + opts,
         re.DOTALL
     )
 
+    seen    = set()
     options = []
-    seen_labels = set()
     for lbl, txt in raw_opts:
-        # Clean page-break artifacts inside option text
-        clean_txt = _clean_page_noise(txt)
-        clean_txt = clean_txt.replace("\n", " ").strip()
-        lbl_upper = lbl.upper()
-        if lbl_upper in seen_labels:
+        lbl = lbl.upper()
+        if lbl in seen:
             continue
-        seen_labels.add(lbl_upper)
-        # Aggressively strip any watermark remnants from within option text
-        clean_txt = re.sub(r'@[\w.]+\s*(?:\w+\s*){0,3}(?:Banker|anker|aker)', '', clean_txt).strip()
-        clean_txt = re.sub(r'\s{2,}', ' ', clean_txt).strip()
-        if clean_txt:
-            options.append({
-                "label": lbl_upper,
-                "text":  _sanitize(clean_txt),
-            })
+        seen.add(lbl)
+        # Strip watermarks and page noise from within option text
+        txt = _clean_page_noise(txt)
+        txt = _INLINE_WM.sub("", txt)
+        txt = txt.replace("\n", " ").strip()
+        txt = re.sub(r'\s{2,}', ' ', txt)
+        if txt:
+            options.append({"label": lbl, "text": _sanitize(txt)})
 
-    # Detect and fill missing option letters (watermark may have covered one)
-    if len(options) >= 2:
-        present = [o["label"] for o in options]
-        expected = LABELS[:len(present) + len(present)//4 + 1]
-        # Find gaps
-        for exp_lbl in expected[:len(present)+1]:
-            if exp_lbl not in present and len(options) < 5:
-                # Insert placeholder at correct position
-                idx_insert = LABELS.index(exp_lbl)
-                options.insert(idx_insert, {
-                    "label": exp_lbl,
-                    "text":  "[Option text unavailable in PDF]",
-                })
-                present = [o["label"] for o in options]
+    # Detect missing options (covered by watermark) and fill placeholders
+    if 2 <= len(options) < 5:
+        present = {o["label"] for o in options}
+        expected = LABELS[:len(options) + 1]
+        for exp in expected:
+            if exp not in present:
+                idx = LABELS.index(exp)
+                options.insert(idx, {"label": exp, "text": "[Text missing in PDF]"})
+                present.add(exp)
 
-    return options, text_before
+    return options, pre
 
 
-def _split_instruction(text: str) -> tuple[str, str]:
+# Passage detection: long block of text before first "What/Which/Find" stem
+_PASSAGE_START = re.compile(
+    r'^(?:Filmmaking|In today|The following|[A-Z][a-z].*(?:is|are|was|were|has|have))',
+    re.MULTILINE
+)
+
+def _parse_pre_opts(text: str) -> tuple:
     """
-    Split shared group instruction from the actual question stem.
-    Returns (question_text, instruction_text).
+    Split pre-options text into (direction, passage, question_stem).
+    direction = bold instruction line (e.g. "In the following questions...")
+    passage   = RC passage body
+    stem      = actual question being asked
     """
-    lines = text.strip().split("\n")
-    inst_lines = []
-    q_lines = []
-    
-    in_instruction = True
+    lines = [l for l in text.split("\n") if l.strip()]
+
+    direction_lines = []
+    passage_lines   = []
+    stem_lines      = []
+
+    state = "direction"  # start expecting direction
+
     for line in lines:
         stripped = line.strip()
         if not stripped:
-            if in_instruction and inst_lines:
-                in_instruction = False
             continue
-        
-        if in_instruction and (_GROUP_INSTRUCTION.match(stripped) or 
-                                stripped.startswith("Word:") or
-                                stripped.startswith("(I)") or
-                                stripped.startswith("Note:")):
-            inst_lines.append(stripped)
-        else:
-            in_instruction = False
-            q_lines.append(stripped)
 
-    instruction = " ".join(inst_lines).strip()
-    question    = " ".join(q_lines).strip()
-    return question, instruction
+        if state == "direction":
+            if _IS_DIRECTION.match(stripped) or stripped.startswith("If no improvement"):
+                direction_lines.append(stripped)
+            elif stripped.startswith("Note:"):
+                direction_lines.append(stripped)
+            elif stripped.startswith("Word:") or stripped.startswith('"'):
+                direction_lines.append(stripped)
+            elif re.match(r'^\(I\)', stripped):
+                # sentence-based word usage — these are part of the question body
+                stem_lines.append(stripped)
+                state = "stem"
+            else:
+                # Check if this is the start of a passage
+                if _looks_like_passage(stripped, lines):
+                    state = "passage"
+                    passage_lines.append(stripped)
+                else:
+                    state = "stem"
+                    stem_lines.append(stripped)
+
+        elif state == "passage":
+            # Everything up to the actual question stem is passage
+            # Question stems usually start with "What", "Which", "Find", "How", blanks
+            if _looks_like_stem(stripped):
+                state = "stem"
+                stem_lines.append(stripped)
+            else:
+                passage_lines.append(stripped)
+
+        elif state == "stem":
+            stem_lines.append(stripped)
+
+    return (
+        " ".join(direction_lines).strip(),
+        " ".join(passage_lines).strip(),
+        " ".join(stem_lines).strip(),
+    )
 
 
-# ── Explanation parsing ───────────────────────────────────────────────────────
+def _looks_like_passage(line: str, all_lines: list) -> bool:
+    """Heuristic: is this line the start of an RC passage?"""
+    # If there are many lines before the options, and the line looks like prose
+    # (doesn't end with ? and is a long sentence)
+    if len(line) < 40:
+        return False
+    if line.endswith("?"):
+        return False
+    if re.match(r'^(What|Which|Find|How|Why|When|Where|Who)', line):
+        return False
+    if re.match(r'^The|^A |^An |^In |^[A-Z][a-z]', line):
+        return len(all_lines) > 4  # only treat as passage if there's a lot of text
+    return False
+
+
+def _looks_like_stem(line: str) -> bool:
+    """Heuristic: does this line look like the actual question being asked?"""
+    return bool(re.match(
+        r'^(What|Which|Find|How|Why|When|Where|Who|'
+        r'The word|Fill in|According|Modern|Why is|What is the)',
+        line, re.IGNORECASE
+    ))
+
+
+# ── Explanation parsing ────────────────────────────────────────────────────────
 
 def _parse_explanations(raw: str) -> dict:
     if not raw.strip():
@@ -310,7 +467,6 @@ def _parse_explanations(raw: str) -> dict:
         ans_match = re.search(r'Answer:\s*([A-Ea-e])', body)
         letter = ans_match.group(1).upper() if ans_match else None
 
-        # Solution = everything after "Answer:" line
         lines = body.split("\n")
         sol_lines = []
         found = False
@@ -319,25 +475,27 @@ def _parse_explanations(raw: str) -> dict:
                 found = True
                 continue
             if found:
-                stripped = line.strip()
-                # Skip "Analysis of Other Options:" header
-                if stripped.lower().startswith("analysis of other"):
+                s = line.strip()
+                if not s:
                     continue
-                if stripped:
-                    sol_lines.append(stripped)
+                if re.match(r'^(Analysis of Other Options|Option Analysis|Let table)', s, re.IGNORECASE):
+                    break  # stop before option-by-option analysis
+                sol_lines.append(s)
+                if len(sol_lines) >= 4:
+                    break
 
         result[num] = {
             "correct_answer": letter,
-            "solution":       " ".join(sol_lines[:6]),  # first 6 lines of solution
+            "solution":       " ".join(sol_lines),
         }
 
     return result
 
 
-# ── Sanitize ──────────────────────────────────────────────────────────────────
+# ── Sanitize ───────────────────────────────────────────────────────────────────
 
 def _sanitize(text: str) -> str:
-    """Strip control chars, collapse whitespace — safe for JSON in <script>."""
+    """Strip control chars, collapse whitespace — safe for JS embedding."""
     import unicodedata
     result = []
     for c in (text or ""):

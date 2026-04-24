@@ -868,6 +868,16 @@ button { cursor: pointer; font-family: inherit; border: none; background: none; 
 }
 #modalConfirm:hover { background:var(--red-lt); }
 #modalConfirm:active { background:var(--red-dim); }
+
+/* Direction box */
+#directionBox {
+  font-size: 12.5px; font-weight: 600; color: var(--ink2);
+  background: var(--gold-lt); border-left: 3px solid var(--gold);
+  padding: 10px 14px; border-radius: 0 8px 8px 0;
+  margin-bottom: 10px; line-height: 1.6;
+}
+/* Passage box */
+#sv-passage { scrollbar-width: thin; }
 </style>
 </head>
 <body>
@@ -948,6 +958,9 @@ button { cursor: pointer; font-family: inherit; border: none; background: none; 
 
     <div class="q-body" id="qBody">
 
+      <!-- Direction line (bold instruction above question) -->
+      <div id="directionBox" style="display:none;background:var(--gold-lt);border-left:3px solid var(--gold);padding:10px 14px;border-radius:0 8px 8px 0;font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:10px;line-height:1.6;"></div>
+
       <!-- Passage -->
       <div class="passage-card" id="passageCard" style="display:none">
         <div class="passage-head">
@@ -959,6 +972,9 @@ button { cursor: pointer; font-family: inherit; border: none; background: none; 
           <div class="passage-txt" id="passageText"></div>
         </div>
       </div>
+
+      <!-- Chart image -->
+      <div id="chartBox" style="display:none;margin-bottom:10px;"></div>
 
       <!-- Question -->
       <div class="q-card">
@@ -1206,25 +1222,47 @@ function renderQuestion(dir) {
   document.getElementById('qNumPill').textContent = 'Q ' + (cur+1);
   document.getElementById('qCatTag').textContent  = q.category || 'General';
 
-  // Show passage only for Reading Comprehension questions
+  // Direction line (bold instruction above question)
   const passageCard = document.getElementById('passageCard');
-  if (PASSAGE && PASSAGE.trim() && q.category === 'Reading Comprehension') {
-    document.getElementById('passageText').textContent = PASSAGE;
+  const dirBox = document.getElementById('directionBox');
+  const chartBox = document.getElementById('chartBox');
+
+  // Direction
+  if (q.direction && q.direction.trim()) {
+    if (dirBox) { dirBox.textContent = q.direction; dirBox.style.display = 'block'; }
+  } else {
+    if (dirBox) dirBox.style.display = 'none';
+  }
+
+  // Passage (RC)
+  if (q.passage && q.passage.trim()) {
+    document.getElementById('passageText').textContent = q.passage;
     passageCard.style.display = 'block';
   } else {
     passageCard.style.display = 'none';
   }
 
-  // Animate question text
+  // Chart image
+  if (chartBox) {
+    if (q.chart && q.chart.trim()) {
+      chartBox.innerHTML = '<img src="data:image/png;base64,' + q.chart + '" style="max-width:100%;border-radius:8px;margin:8px 0;" alt="Chart">';
+      chartBox.style.display = 'block';
+    } else {
+      chartBox.style.display = 'none';
+    }
+  }
+
+  // Question stem text
   const qt = document.getElementById('questionText');
+  const stemText = q.text || '';
   if (dir) {
     qt.style.cssText = 'transition:none;opacity:0;transform:translateX(' + (dir>0?'16px':'-16px') + ')';
-    qt.textContent   = q.text;
+    qt.textContent   = stemText;
     requestAnimationFrame(() => {
       qt.style.cssText = 'transition:opacity .18s,transform .18s;opacity:1;transform:translateX(0)';
     });
   } else {
-    qt.textContent = q.text;
+    qt.textContent = stemText;
   }
 
   // Options

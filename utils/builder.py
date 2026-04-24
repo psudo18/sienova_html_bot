@@ -62,6 +62,9 @@ def _gangleader(questions, test_name, total, total_sec, mins):
         ci   = LABELS.index(cl) if cl in LABELS else 0
         items.append({
             "text":        _sanitize(q.get("question_text", "")),
+            "direction":   _sanitize(q.get("direction", "")),
+            "passage":     _sanitize(q.get("passage", "")),
+            "chart":       q.get("chart_image") or "",
             "options":     [_sanitize(o) for o in opts],
             "correct":     ci,
             "explanation": _sanitize(q.get("solution", "")),
@@ -110,6 +113,9 @@ def _sienova(questions, test_name, total, total_sec, mins):
         ci   = LABELS.index(cl) if cl in LABELS else 0
         items.append({
             "t": _sanitize(q.get("question_text", "")),
+            "d": _sanitize(q.get("direction", "")),
+            "p": _sanitize(q.get("passage", "")),
+            "c": q.get("chart_image") or "",
             "o": [_sanitize(o) for o in opts],
             "a": ci,
             "s": _sanitize(q.get("solution", "")),
