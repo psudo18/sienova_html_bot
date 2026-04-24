@@ -1262,7 +1262,12 @@ function renderQuestion(dir) {
       qt.style.cssText = 'transition:opacity .18s,transform .18s;opacity:1;transform:translateX(0)';
     });
   } else {
+    // Render | as line breaks (used for word-usage statements)
+  if (stemText.includes(' | ')) {
+    qt.innerHTML = stemText.split(' | ').map(s => `<span style="display:block;margin-bottom:4px;">${s}</span>`).join('');
+  } else {
     qt.textContent = stemText;
+  }
   }
 
   // Options

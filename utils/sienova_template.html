@@ -1086,7 +1086,14 @@ function render(idx, fromPal = false) {
   }
 
   // Question stem
-  document.getElementById('q-text').textContent = q.t || '';
+  // Render | as line breaks (word-usage statement questions)
+  const qtEl = document.getElementById('q-text');
+  const stemTxt = q.t || '';
+  if (stemTxt.includes(' | ')) {
+    qtEl.innerHTML = stemTxt.split(' | ').map(s => `<span style="display:block;margin-bottom:6px;">${s}</span>`).join('');
+  } else {
+    qtEl.textContent = stemTxt;
+  }
 
   const wrap = document.getElementById('opts');
   wrap.innerHTML = '';
