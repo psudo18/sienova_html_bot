@@ -1262,12 +1262,16 @@ function renderQuestion(dir) {
       qt.style.cssText = 'transition:opacity .18s,transform .18s;opacity:1;transform:translateX(0)';
     });
   } else {
-    // Render | as line breaks (used for word-usage statements)
-  if (stemText.includes(' | ')) {
-    qt.innerHTML = stemText.split(' | ').map(s => `<span style="display:block;margin-bottom:4px;">${s}</span>`).join('');
-  } else {
-    qt.textContent = stemText;
+    // Render bold markers and | separators
+  function renderStem(el, text) {
+    if (!text) { el.textContent = ''; return; }
+    const parts = text.includes(' | ') ? text.split(' | ') : [text];
+    el.innerHTML = parts.map(part => {
+      const html = part.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      return parts.length > 1 ? `<span style="display:block;margin-bottom:5px;">${html}</span>` : html;
+    }).join('');
   }
+  renderStem(qt, stemText);
   }
 
   // Options
